@@ -1,0 +1,202 @@
+@import "tailwindcss";
+
+/*
+  Design tokens (see context/ui-context.md). Raw values live once, in :root; everything else refers to
+  them. The @theme block maps each token to the Tailwind utility names components use:
+
+    bg-base / bg-surface / bg-elevated / bg-subtle        page and surface layers
+    border-surface-border / border-surface-border-subtle   borders
+    text-copy-primary / -secondary / -muted / -faint       text
+    text-brand / bg-brand / bg-brand-dim (= bg-accent-dim) cyan brand accent
+    bg-ai / text-ai / text-ai-text                         AI accent
+    text-state-error / -success / -warning                 states
+
+  The standard shadcn names (background, card, primary, muted, …) are mapped onto the same tokens, so
+  generated components in components/ui pick up the dark theme without being edited.
+ */
+
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* Project tokens */
+  --color-base: var(--bg-base);
+  --color-surface: var(--bg-surface);
+  --color-elevated: var(--bg-elevated);
+  --color-subtle: var(--bg-subtle);
+
+  --color-surface-border: var(--border-default);
+  --color-surface-border-subtle: var(--border-subtle);
+
+  --color-copy-primary: var(--text-primary);
+  --color-copy-secondary: var(--text-secondary);
+  --color-copy-muted: var(--text-muted);
+  --color-copy-faint: var(--text-faint);
+
+  --color-brand: var(--accent-primary);
+  --color-brand-dim: var(--accent-primary-dim);
+  --color-accent-dim: var(--accent-primary-dim);
+
+  --color-ai: var(--accent-ai);
+  --color-ai-text: var(--accent-ai-text);
+
+  --color-state-error: var(--state-error);
+  --color-state-success: var(--state-success);
+  --color-state-warning: var(--state-warning);
+
+  /* shadcn/ui tokens */
+  --color-background: var(--bg-base);
+  --color-foreground: var(--text-primary);
+  --color-card: var(--bg-surface);
+  --color-card-foreground: var(--text-primary);
+  --color-popover: var(--bg-elevated);
+  --color-popover-foreground: var(--text-primary);
+  --color-primary: var(--accent-primary);
+  --color-primary-foreground: var(--bg-base);
+  --color-secondary: var(--bg-subtle);
+  --color-secondary-foreground: var(--text-primary);
+  --color-muted: var(--bg-subtle);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--bg-subtle);
+  --color-accent-foreground: var(--text-primary);
+  --color-destructive: var(--state-error);
+  --color-destructive-foreground: var(--text-primary);
+  --color-border: var(--border-default);
+  --color-input: var(--border-default);
+  --color-ring: var(--accent-primary);
+
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+
+  --animate-slide-in-right: slide-in-right 220ms ease-out;
+  --animate-fade-in: fade-in 160ms ease-out;
+}
+
+:root {
+  --bg-base: #080809;
+  --bg-surface: #111114;
+  --bg-elevated: #18181c;
+  --bg-subtle: #1e1e23;
+  --border-default: #2a2a30;
+  --border-subtle: #3a3a42;
+  --text-primary: #f0f0f4;
+  --text-secondary: #c0c0cc;
+  --text-muted: #808090;
+  --text-faint: #505060;
+  --accent-primary: #00c8d4;
+  --accent-primary-dim: rgba(0, 200, 212, 0.12);
+  --accent-ai: #6457f9;
+  --accent-ai-text: #8b82ff;
+  --state-error: #ff4d4f;
+  --state-success: #34d399;
+  --state-warning: #fbbf24;
+
+  /* Canvas-only values (React Flow draws in SVG, which reads these directly). */
+  --canvas-dot: #27272a;
+  --canvas-edge: #cbd5e1;
+  --canvas-edge-hover: #f8fafc;
+
+  color-scheme: dark;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes loading-dot {
+  0%,
+  80%,
+  100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@layer base {
+  * {
+    border-color: var(--border-default);
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"] {
+    cursor: pointer;
+  }
+}
+
+/* Bouncing dots for pending buttons (components/ui/loading-dots.tsx). */
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.loading-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background-color: currentColor;
+  animation: loading-dot 1.2s infinite ease-in-out both;
+}
+
+.loading-dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.loading-dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+/* React Flow chrome on the dark canvas. */
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__minimap {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(8, 8, 9, 0.75);
+}
+
+.react-flow__minimap-node {
+  fill: rgba(0, 200, 212, 0.25);
+}
+
+.react-flow__node.selected,
+.react-flow__node:focus,
+.react-flow__node:focus-visible {
+  outline: none;
+}
