@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  # Queue + rate limiter. Must stay `noeviction` — BullMQ loses jobs otherwise.
+  redis:
+    image: redis:latest
+    container_name: ghost-ai-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory-policy noeviction
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Response/session cache. A separate instance because a cache has to evict to stay bounded, while
+  # the queue instance above must never evict. `volatile-lru` only evicts keys with a TTL: every cache
+  # entry has one, the namespace version counters don't. No persistence — empty after a restart is fine.
+  redis-cache:
+    image: redis:7
+    container_name: ghost-ai-redis-cache
+    ports:
+      - "6380:6379"
+    command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy volatile-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Optional local Postgres for apps/server. Point DATABASE_URL at
+  # postgresql://ghostai:ghostai@localhost:5432/ghostai to use it instead of a hosted database.
+  postgres:
+    image: postgres:16
+    container_name: ghost-ai-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ghostai
+      POSTGRES_PASSWORD: ghostai
+      POSTGRES_DB: ghostai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ghostai -d ghostai"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  redis_data:
+  postgres_data:
