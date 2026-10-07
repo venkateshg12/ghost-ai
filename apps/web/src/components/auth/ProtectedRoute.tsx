@@ -1,0 +1,28 @@
+"use client";
+
+import { useEffect, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import FullScreenLoader from "@/components/common/FullScreenLoader";
+import { useAuthStore } from "@/store/auth.store";
+
+// Signed-in users only. Anyone else is sent to sign in, with the page they wanted remembered.
+const ProtectedRoute = ({ children }: { children: ReactNode }) => {
+  const user = useAuthStore((state) => state.user);
+  const isBootstrapped = useAuthStore((state) => state.isBootstrapped);
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (isBootstrapped && !user) {
+      router.replace(`/sign-in?from=${encodeURIComponent(pathname)}`);
+    }
+  }, [isBootstrapped, user, router, pathname]);
+
+  if (!isBootstrapped || !user) {
+    return <FullScreenLoader label="Checking your session…" />;
+  }
+
+  return <>{children}</>;
+};
+
+export default ProtectedRoute;
