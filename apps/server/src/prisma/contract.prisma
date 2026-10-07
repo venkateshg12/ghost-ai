@@ -1,0 +1,134 @@
+enum AuthProvider {
+     @@type("pg/text@1")
+    local
+    google
+}
+enum Role {
+     @@type("pg/text@1")
+    user
+    admin
+}
+
+enum VerificationLinkType {
+    @@type("pg/text@1")
+
+    email_verification
+    password_reset
+}
+
+enum ProjectStatus {
+    @@type("pg/text@1")
+
+    DRAFT
+    ARCHIVED
+}
+
+enum AiRunKind {
+    @@type("pg/text@1")
+
+    design
+    spec
+}
+
+
+model User {
+    id  Uuid @id @default(uuid())
+    email String @unique
+    passwordHash String?
+    name String?
+    googleId String? @unique
+    authProvider AuthProvider @default(local)
+    avatar String?
+    role  Role @default(user)
+    verified Boolean @default(false)
+    createdAt TimestamptzString @default(now())
+    updatedAt TimestamptzString @default(now())
+}
+
+
+model Session {
+    id Uuid @id @default(uuid())
+    userId Uuid
+    userAgent String?
+    createdAt TimestamptzString @default(now())
+    expiresAt TimestamptzString @default(dbgenerated("(CURRENT_TIMESTAMP + '30 days'::interval)"))
+    refreshJti String
+    prevRefreshJti String?
+    rotatedAt TimestamptzString?
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([expiresAt])
+}
+
+model VerificationLink {
+    id Uuid @id @default(uuid())
+    userId Uuid
+    type VerificationLinkType
+    token String @unique
+    createdAt TimestamptzString @default(now())
+    expiresAt TimestamptzString
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([expiresAt])
+}
+
+// The project id is also the Liveblocks room id. Canvas content lives in blob storage; this row only
+// keeps the reference to the latest snapshot.
+model Project {
+    id Uuid @id @default(uuid())
+    ownerId Uuid
+    name String
+    description String?
+    status ProjectStatus @default(DRAFT)
+    canvasJsonPath String?
+    createdAt TimestamptzString @default(now())
+    updatedAt TimestamptzString @default(now())
+    owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+    collaborators ProjectCollaborator[]
+    specs ProjectSpec[]
+
+    @@index([ownerId])
+    @@index([createdAt])
+}
+
+// Collaborators are invited by email, so an invite works before the person has an account; access
+// is granted to whichever verified user owns that address.
+model ProjectCollaborator {
+    id Uuid @id @default(uuid())
+    projectId Uuid
+    email String
+    createdAt TimestamptzString @default(now())
+    project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+    @@unique([projectId, email])
+    @@index([email])
+    @@index([projectId, createdAt])
+}
+
+// Metadata only: the Markdown itself lives in blob storage at `filePath`.
+model ProjectSpec {
+    id Uuid @id @default(uuid())
+    projectId Uuid
+    filePath String
+    fileName String
+    createdAt TimestamptzString @default(now())
+    project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+    @@index([projectId, createdAt])
+}
+
+// One row per queued AI job, so run status is only ever shown to the user who started it.
+model TaskRun {
+    id Uuid @id @default(uuid())
+    runId String @unique
+    kind AiRunKind
+    projectId Uuid
+    userId Uuid
+    createdAt TimestamptzString @default(now())
+    project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId, projectId])
+}
