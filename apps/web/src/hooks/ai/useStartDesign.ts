@@ -4,7 +4,11 @@ import type { AiRunStarted, DesignRequestSchema } from "@repo/types";
 import { useMutation } from "@tanstack/react-query";
 
 export const useStartDesign = () => {
-    return useMutation<SuccessResponse<AiRunStarted>, ApiError, DesignRequestSchema>({
-        mutationFn: startDesign,
-    });
+  return useMutation<
+    SuccessResponse<AiRunStarted>,
+    ApiError,
+    DesignRequestSchema
+  >({
+    mutationFn: startDesign,
+  });
 };

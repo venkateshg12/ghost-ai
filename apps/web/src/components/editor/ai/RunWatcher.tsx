@@ -5,7 +5,15 @@ import { useRealtimeRun } from "@trigger.dev/react-hooks";
 import type { AiRunStarted } from "@repo/types";
 
 // Statuses after which a run will not change again.
-const FINAL_STATUSES = new Set(["COMPLETED", "FAILED", "CRASHED", "CANCELED", "SYSTEM_FAILURE", "EXPIRED", "TIMED_OUT"]);
+const FINAL_STATUSES = new Set([
+  "COMPLETED",
+  "FAILED",
+  "CRASHED",
+  "CANCELED",
+  "SYSTEM_FAILURE",
+  "EXPIRED",
+  "TIMED_OUT",
+]);
 
 interface RunWatcherProps {
   run: AiRunStarted;
@@ -18,7 +26,9 @@ interface RunWatcherProps {
   draws nothing — progress text for the whole room comes from `ai-status-feed`.
  */
 const RunWatcher = ({ run, onFinished }: RunWatcherProps) => {
-  const { run: realtimeRun, error } = useRealtimeRun(run.runId, { accessToken: run.publicAccessToken });
+  const { run: realtimeRun, error } = useRealtimeRun(run.runId, {
+    accessToken: run.publicAccessToken,
+  });
 
   useEffect(() => {
     if (error) {
@@ -26,7 +36,10 @@ const RunWatcher = ({ run, onFinished }: RunWatcherProps) => {
       return;
     }
     if (realtimeRun && FINAL_STATUSES.has(realtimeRun.status)) {
-      onFinished({ succeeded: realtimeRun.status === "COMPLETED", error: realtimeRun.error?.message });
+      onFinished({
+        succeeded: realtimeRun.status === "COMPLETED",
+        error: realtimeRun.error?.message,
+      });
     }
   }, [realtimeRun, error, onFinished]);
 

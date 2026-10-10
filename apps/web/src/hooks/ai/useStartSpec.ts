@@ -4,7 +4,11 @@ import type { AiRunStarted, SpecRequestSchema } from "@repo/types";
 import { useMutation } from "@tanstack/react-query";
 
 export const useStartSpec = () => {
-    return useMutation<SuccessResponse<AiRunStarted>, ApiError, SpecRequestSchema>({
-        mutationFn: startSpec,
-    });
+  return useMutation<
+    SuccessResponse<AiRunStarted>,
+    ApiError,
+    SpecRequestSchema
+  >({
+    mutationFn: startSpec,
+  });
 };
