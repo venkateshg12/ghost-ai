@@ -5,7 +5,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest run",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
@@ -14,12 +14,25 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@dagrejs/dagre": "^3.1.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
     "@types/express": "^5.0.6",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^5.0.3"
   },
-  "private": true
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./layout": {
+      "types": "./dist/graphLayout.d.ts",
+      "default": "./dist/graphLayout.js"
+    },
+    "./package.json": "./package.json"
+  }
 }
