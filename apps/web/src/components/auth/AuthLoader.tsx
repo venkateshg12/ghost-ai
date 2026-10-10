@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useGetProfile } from "@/hooks/auth/useGetProfile";
 import { clearUserQueries } from "@/lib/queryClient";
 import { toAppUser } from "@/lib/user";
@@ -16,6 +16,14 @@ const AuthLoader = ({ children }: { children: ReactNode }) => {
   const setUser = useAuthStore((state) => state.setUser);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const isBootstrapped = useAuthStore((state) => state.isBootstrapped);
+
+  // A sleeping free-tier API can take up to a minute to answer; say so instead of looking frozen.
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    if (isBootstrapped) return;
+    const timer = setTimeout(() => setSlow(true), 6_000);
+    return () => clearTimeout(timer);
+  }, [isBootstrapped]);
 
   useEffect(() => {
     if (isSuccess && data?.data?.user) {
@@ -35,8 +43,21 @@ const AuthLoader = ({ children }: { children: ReactNode }) => {
           <div className="absolute inset-0 rounded-full border-t border-brand animate-spin" />
           <div className="h-1.5 w-1.5 rounded-full bg-brand" />
         </div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.4em] text-copy-faint">Ghost AI</p>
-        <p className="mt-2 text-sm text-copy-muted">Preparing your workspace…</p>
+        <p className="font-mono text-[11px] uppercase tracking-[0.4em] text-copy-faint">
+          Ghost AI
+        </p>
+        <p className="mt-2 text-sm text-copy-muted">
+          Preparing your workspace…
+        </p>
+        {slow && (
+          <p
+            className="mt-3 max-w-xs text-xs leading-relaxed text-copy-faint"
+            role="status"
+          >
+            The server is waking up after being idle. This can take up to a
+            minute the first time.
+          </p>
+        )}
       </div>
     );
   }

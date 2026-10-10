@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="tile" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#8b82ff"/>
+      <stop offset="1" stop-color="#6457f9"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#tile)"/>
+  <!-- Ghost body: the same silhouette as the in-app brand mark, filled so it holds up at 16px. -->
+  <g transform="translate(11 10.5) scale(1.75)">
+    <path d="M12 2a8 8 0 0 0-8 8v12l3-3 2.5 2.5L12 19l2.5 2.5L17 19l3 3V10a8 8 0 0 0-8-8z" fill="#ffffff" stroke="#ffffff" stroke-width="1" stroke-linejoin="round"/>
+    <circle cx="9" cy="10" r="1.5" fill="#6457f9"/>
+    <circle cx="15" cy="10" r="1.5" fill="#6457f9"/>
+  </g>
+</svg>

@@ -1,8 +1,14 @@
 import axios, { AxiosError } from "axios";
 import { API_URL } from "@/constants/env";
 import { clearUserQueries } from "@/lib/queryClient";
+import { isServerUnavailable } from "@/lib/serverStatus";
 import { useAuthStore } from "@/store/auth.store";
-import type { ApiError, ApiErrorDetail, QueueItem, RetryableRequestConfig } from "@/types";
+import type {
+  ApiError,
+  ApiErrorDetail,
+  QueueItem,
+  RetryableRequestConfig,
+} from "@/types";
 
 const REQUEST_TIMEOUT_MS = 30_000;
 
@@ -55,7 +61,8 @@ API.interceptors.response.use(
     if (!error.response) {
       return Promise.reject<ApiError>({
         status: 0,
-        message: "Network error. Please check your connection and that the API is running.",
+        message:
+          "Network error. Please check your connection and that the API is running.",
       });
     }
 
@@ -81,6 +88,17 @@ API.interceptors.response.use(
         return API(config);
       } catch (refreshError) {
         processQueue(refreshError);
+        // A sleeping or unreachable API says nothing about the session: keep it, and let the caller retry.
+        const refreshStatus = axios.isAxiosError(refreshError)
+          ? (refreshError.response?.status ?? 0)
+          : undefined;
+        if (isServerUnavailable(refreshStatus)) {
+          return Promise.reject<ApiError>({
+            status: refreshStatus!,
+            message:
+              "The server is waking up. This can take up to a minute on the free tier; please try again.",
+          });
+        }
         useAuthStore.getState().clearAuth();
         // An expired session ends the same way a logout does, so the projects of the session that
         // just died don't linger in the sidebar or on the next page.
@@ -95,7 +113,15 @@ API.interceptors.response.use(
     }
 
     const firstError = data?.errors?.[0];
-    const message = firstError?.message || data?.message || "Something went wrong.";
+    // A host's own gateway page (not the API's envelope) says nothing useful; a startup is the usual cause.
+    const startingUp =
+      isServerUnavailable(status) && !firstError && !data?.message;
+    const message =
+      firstError?.message ||
+      data?.message ||
+      (startingUp
+        ? "The server is waking up. This can take up to a minute on the free tier; please try again."
+        : "Something went wrong.");
     const code = firstError?.code || data?.code;
 
     return Promise.reject<ApiError>({
@@ -104,11 +130,10 @@ API.interceptors.response.use(
       errors: data?.errors,
       status, // ensures status matches the response status
     });
-  }
+  },
 );
 
 export default API;
-
 
 /*
 

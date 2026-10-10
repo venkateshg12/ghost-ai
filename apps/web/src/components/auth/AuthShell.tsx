@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { Cpu, FileText, Users } from "lucide-react";
 import BrandMark from "@/components/common/BrandMark";
 
@@ -24,7 +25,9 @@ const FEATURES = [
 const AuthShell = ({ children }: { children: ReactNode }) => (
   <div className="flex min-h-screen bg-base text-copy-primary">
     <div className="hidden flex-col justify-between border-r border-surface-border bg-surface p-16 lg:flex lg:w-1/2">
-      <BrandMark />
+      <Link href="/" aria-label="Ghost AI home" className="w-fit rounded-xl focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring">
+        <BrandMark />
+      </Link>
 
       <div className="my-auto max-w-lg space-y-10">
         <div className="space-y-4">

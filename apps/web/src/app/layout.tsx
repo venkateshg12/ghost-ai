@@ -28,8 +28,14 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full">
+      <body className="min-h-full" suppressHydrationWarning>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if(typeof document!=='undefined'&&document.body){document.body.removeAttribute('cz-shortcut-listen');}`,
+          }}
+        />
         <Providers>{children}</Providers>
       </body>
     </html>

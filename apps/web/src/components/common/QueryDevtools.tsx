@@ -1,20 +1,24 @@
 "use client";
 
-import { lazy, Suspense } from "react";
+import { useEffect, useState } from "react";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { IS_DEV } from "@/constants/env";
 
-// Lazy, so the devtools code isn't even in the production bundle.
-const ReactQueryDevtools =
-  process.env.NODE_ENV === "development"
-    ? lazy(() =>
-        import("@tanstack/react-query-devtools").then((m) => ({ default: m.ReactQueryDevtools }))
-      )
-    : null;
+// TanStack Query Devtools is automatically tree-shaken in production.
+// We only mount on the client during development.
+const QueryDevtools = () => {
+  const [mounted, setMounted] = useState(false);
 
-const QueryDevtools = () =>
-  ReactQueryDevtools && (
-    <Suspense fallback={null}>
-      <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-right" />
-    </Suspense>
-  );
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !IS_DEV) {
+    return null;
+  }
+
+  return <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-right" />;
+};
 
 export default QueryDevtools;
+

@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense } from "react";
+import PublicRoute from "@/components/auth/PublicRoute";
 import FullScreenLoader from "@/components/common/FullScreenLoader";
-import { useAuthStore } from "@/store/auth.store";
+import LandingPage from "@/components/landing/LandingPage";
 
-// `/` has no page of its own: signed-in users go to the editor, everyone else to sign in.
+/*
+  `/` is the marketing page, for signed-out visitors only. PublicRoute holds the page back until the
+  session has resolved and sends a signed-in user straight on to the editor, so the landing page is
+  never shown to someone who is logged in. (It reads `?from=`, hence the Suspense boundary.)
+ */
 export default function Home() {
-  const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-
-  useEffect(() => {
-    router.replace(user ? "/editor" : "/sign-in");
-  }, [router, user]);
-
-  return <FullScreenLoader />;
+  return (
+    <Suspense fallback={<FullScreenLoader />}>
+      <PublicRoute>
+        <LandingPage />
+      </PublicRoute>
+    </Suspense>
+  );
 }

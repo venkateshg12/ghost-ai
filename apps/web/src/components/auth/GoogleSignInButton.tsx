@@ -1,17 +1,21 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { TriangleAlert } from "lucide-react";
 import { useGoogleLogin } from "@/hooks/auth/useGoogleLogin";
-import { GOOGLE_CLIENT_ID } from "@/constants/env";
+import { GOOGLE_CLIENT_ID, IS_DEV } from "@/constants/env";
 import type { GoogleCredentialResponse } from "@/lib/google/google";
 import { loadGoogleSdk } from "@/lib/google/loadGsi";
 
+// Google caps the rendered button at 400px wide.
+const MAX_BUTTON_WIDTH = 400;
+
 function initializeGoogleSignIn(
   buttonContainer: HTMLDivElement,
-  onCredential: (response: GoogleCredentialResponse) => void
-): void {
+  onCredential: (response: GoogleCredentialResponse) => void,
+): boolean {
   const id = window.google?.accounts?.id;
-  if (!id) return;
+  if (!id) return false;
 
   id.initialize({
     client_id: GOOGLE_CLIENT_ID,
@@ -26,17 +30,38 @@ function initializeGoogleSignIn(
     theme: "filled_black",
     size: "large",
     text: "continue_with",
-    shape: "pill",
-    width: buttonContainer.clientWidth || 320,
+    shape: "rectangular",
+    width: Math.min(buttonContainer.clientWidth || 320, MAX_BUTTON_WIDTH),
   });
+  return true;
 }
+
+type Status = "loading" | "ready" | "failed";
+
+const Divider = () => (
+  <div className="my-5 flex items-center gap-3">
+    <div className="h-px flex-1 bg-surface-border" />
+    <span className="font-mono text-[10px] uppercase tracking-widest text-copy-faint">
+      or
+    </span>
+    <div className="h-px flex-1 bg-surface-border" />
+  </div>
+);
 
 /*
   Google hands the browser a signed ID token; the API verifies it with Google, then creates the
-  session and sets the same cookies a password sign-in does. Not rendered without a client id.
+  session and sets the same cookies a password sign-in does.
+
+  Without a client id the button cannot work. In production it is simply left out; in development a
+  visible notice says what to set, so a missing variable is never mistaken for "the feature isn't built".
  */
-export const GoogleSignInButton = ({ onError }: { onError?: (message: string) => void }) => {
+export const GoogleSignInButton = ({
+  onError,
+}: {
+  onError?: (message: string) => void;
+}) => {
   const buttonRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState<Status>("loading");
   const { mutate: loginWithGoogle } = useGoogleLogin();
 
   useEffect(() => {
@@ -54,27 +79,69 @@ export const GoogleSignInButton = ({ onError }: { onError?: (message: string) =>
 
     loadGoogleSdk()
       .then(() => {
-        if (!cancelled && buttonRef.current) {
-          initializeGoogleSignIn(buttonRef.current, handleCredentialResponse);
-        }
+        if (cancelled || !buttonRef.current) return;
+        setStatus(
+          initializeGoogleSignIn(buttonRef.current, handleCredentialResponse)
+            ? "ready"
+            : "failed",
+        );
       })
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setStatus("failed");
+      });
 
     return () => {
       cancelled = true;
     };
   }, [loginWithGoogle, onError]);
 
-  if (!GOOGLE_CLIENT_ID) return null;
+  if (!GOOGLE_CLIENT_ID) {
+    if (!IS_DEV) return null;
+    return (
+      <>
+        <Divider />
+        <div className="flex items-start gap-2.5 rounded-xl border border-dashed border-state-warning/40 bg-state-warning/5 px-3 py-2.5 text-xs leading-relaxed text-state-warning">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            Google sign-in is off in development: set{" "}
+            <code className="font-mono">NEXT_PUBLIC_GOOGLE_CLIENT_ID</code> in{" "}
+            <code className="font-mono">apps/web/.env</code> and restart.
+          </span>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
-      <div className="my-5 flex items-center gap-3">
-        <div className="h-px flex-1 bg-surface-border" />
-        <span className="font-mono text-[10px] uppercase tracking-widest text-copy-faint">or</span>
-        <div className="h-px flex-1 bg-surface-border" />
+      <Divider />
+      <div className="relative min-h-10 w-full">
+        {/* Holds the space until Google's button is drawn, so the form doesn't jump. */}
+        {status === "loading" && (
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 animate-pulse rounded-xl border border-surface-border-subtle bg-elevated"
+          />
+        )}
+        <div
+          ref={buttonRef}
+          className={
+            status === "failed"
+              ? "hidden"
+              : "flex w-full justify-center overflow-hidden rounded-xl"
+          }
+        />
+        {status === "failed" && (
+          <p
+            role="alert"
+            className="rounded-xl border border-surface-border-subtle bg-elevated px-3 py-2.5 text-center text-xs text-copy-muted"
+          >
+            Google sign-in couldn&apos;t load. Check your connection or ad
+            blocker, or use your email and password.
+          </p>
+        )}
       </div>
-      <div ref={buttonRef} className="flex min-h-10 w-full justify-center" />
     </>
   );
 };
