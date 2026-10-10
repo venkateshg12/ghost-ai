@@ -6,6 +6,7 @@ import {
     NODE_SHAPES,
     type CanvasEdgeData,
     type CanvasNodeData,
+    type GraphInput,
     type NodeShape,
 } from "@repo/types";
 
@@ -97,3 +98,16 @@ export const describeGraph = (graph: FlowGraph) => {
         .join("\n");
     return `Nodes:\n${nodes}\n\nEdges:\n${edges || "(none)"}`;
 };
+
+// The framework-free form of a graph, for the shared analysis, layout and export utilities.
+export const toGraphInput = (graph: FlowGraph): GraphInput => ({
+    nodes: graph.nodes.map((node) => ({
+        id: node.id,
+        label: node.data?.label ?? "",
+        shape: node.data?.shape,
+        color: node.data?.color,
+        textColor: node.data?.textColor,
+        ...sizeOf(node),
+    })),
+    edges: graph.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, label: edge.data?.label })),
+});

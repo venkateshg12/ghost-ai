@@ -1,6 +1,8 @@
 import { generateText } from "ai";
 import type { ChatHistoryItem } from "@repo/types";
-import { getGeminiModel } from "./model";
+import { attemptsFor, getProviderChain } from "./providers";
+import { runWithFallback, type RunMeta } from "./runWithFallback";
+import type { TokenUsage } from "./design";
 import { describeGraph, type FlowGraph } from "./graph";
 
 const SYSTEM_PROMPT = `You are a principal software architect. From a system design diagram (nodes and edges)
@@ -25,20 +27,62 @@ interface SpecInput {
     chatHistory: ChatHistoryItem[];
 }
 
-export const generateSpecMarkdown = async (input: SpecInput): Promise<string> => {
-    const model = getGeminiModel();
-    if (!model) return fallbackSpecMarkdown(input);
+export interface SpecResult {
+    markdown: string;
+    meta: RunMeta;
+    usage: TokenUsage;
+}
+
+const OFFLINE_META: RunMeta = {
+    provider: "offline",
+    modelId: "deterministic",
+    label: "Offline generator",
+    latencyMs: 0,
+    fellBack: false,
+    attempts: [],
+};
+
+// A real spec is long; a few lines means the model gave up or was cut off.
+const MIN_SPEC_CHARS = 400;
+
+// Specs are far longer than design plans, so each attempt gets twice the usual time.
+const SPEC_TIMEOUT_SCALE = 2;
+
+export const generateSpecMarkdown = async (input: SpecInput, options: { signal?: AbortSignal } = {}): Promise<SpecResult> => {
+    const chain = getProviderChain();
+    if (chain.length === 0) return { markdown: fallbackSpecMarkdown(input), meta: OFFLINE_META, usage: {} };
 
     const conversation = input.chatHistory.length
         ? input.chatHistory.map((item) => `${item.role}: ${item.content}`).join("\n")
         : "(no conversation)";
 
-    const { text } = await generateText({
-        model,
-        system: SYSTEM_PROMPT,
-        prompt: `Project: ${input.projectName}\n\n${describeGraph(input.graph)}\n\nConversation:\n${conversation}`,
-    });
-    return text.trim();
+    const { value, meta } = await runWithFallback(
+        attemptsFor(
+            async (provider, signal) => {
+                const { text, usage } = await generateText({
+                    model: provider.model,
+                    system: SYSTEM_PROMPT,
+                    prompt: `Project: ${input.projectName}\n\n${describeGraph(input.graph)}\n\nConversation:\n${conversation}`,
+                    providerOptions: provider.providerOptions,
+                    abortSignal: signal,
+                    maxRetries: 0,
+                    temperature: 0.3,
+                    maxOutputTokens: 8000,
+                });
+                return { markdown: text.trim(), usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
+            },
+            chain,
+            SPEC_TIMEOUT_SCALE
+        ),
+        {
+            signal: options.signal,
+            validate: ({ markdown }) => {
+                if (markdown.length < MIN_SPEC_CHARS) throw new Error("The spec came back too short");
+            },
+        }
+    );
+
+    return { markdown: value.markdown, meta, usage: value.usage };
 };
 
 /*
