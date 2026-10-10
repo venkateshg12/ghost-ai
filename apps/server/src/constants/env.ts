@@ -60,7 +60,7 @@ export const TRUSTED_PROXY_CIDRS = getEnv("TRUSTED_PROXY_CIDRS", "");
     /backend that is /backend/auth/refresh); the cookie is only sent to that path.
  */
 export const PROXY_SHARED_SECRET = getEnv("PROXY_SHARED_SECRET", "");
-export const REFRESH_COOKIE_PATH = getEnv("REFRESH_COOKIE_PATH", "/auth/refresh");
+export const REFRESH_COOKIE_PATH = getEnv("REFRESH_COOKIE_PATH", "/backend/auth/refresh");
 
 /*
   SameSite for the auth cookies. "strict" is right whenever the browser only talks to the web app's origin (the
