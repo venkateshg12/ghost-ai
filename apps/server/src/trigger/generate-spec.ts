@@ -3,7 +3,7 @@ import { z } from "zod";
 import { chatHistoryItemSchema } from "@repo/types";
 import { orm } from "../prisma/db";
 import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/liveblocks";
-import { generateSpecMarkdown, readFlow } from "../utils/ai";
+import { AllProvidersFailedError, RunCancelledError, describeProviderFailure, generateSpecMarkdown, readFlow, recordRunResult, toAiMeta } from "../utils/ai";
 import { createSpecRecord } from "../services/spec.service";
 
 export const generateSpecPayloadSchema = z.object({
@@ -22,7 +22,8 @@ export type GenerateSpecPayload = z.infer<typeof generateSpecPayloadSchema>;
 export const generateSpecTask = schemaTask({
     id: "generate-spec",
     schema: generateSpecPayloadSchema,
-    run: async ({ projectId, chatHistory }, { ctx }) => {
+    retry: { maxAttempts: 1 },
+    run: async ({ projectId, chatHistory }, { ctx, signal }) => {
         const runId = ctx.run.id;
 
         const project = await orm.Project.where({ id: projectId }).select("id", "name").first();
@@ -41,7 +42,8 @@ export const generateSpecTask = schemaTask({
 
             metadata.set("step", "processing");
             await publishStatus(projectId, { kind: "spec", runId, step: "processing", text: "Writing the technical specification…" });
-            const markdown = await generateSpecMarkdown({ projectName: project.name, graph, chatHistory });
+            const { markdown, meta, usage } = await generateSpecMarkdown({ projectName: project.name, graph, chatHistory }, { signal });
+            const aiMeta = toAiMeta(meta, usage);
 
             const spec = await createSpecRecord(projectId, project.name, markdown);
             logger.info("Spec saved", { specId: spec.id, chars: markdown.length });
@@ -53,18 +55,35 @@ export const generateSpecTask = schemaTask({
                 step: "complete",
                 text: "Technical spec is ready in the Specs tab.",
                 specId: spec.id,
+                meta: aiMeta,
             });
             await publishAssistantMessage(
                 projectId,
-                `I wrote a technical spec from the canvas: ${spec.fileName}. Open the Specs tab to preview or download it.`
+                `I wrote a technical spec from the canvas: ${spec.fileName}. Open the Specs tab to preview or download it.`,
+                { runId, meta: aiMeta }
             );
+            await recordRunResult(runId, { status: "completed", meta, usage });
 
             return { status: "completed" as const, specId: spec.id };
+        } catch (error) {
+            if (error instanceof RunCancelledError) {
+                await publishStatus(projectId, { kind: "spec", runId, step: "error", text: "Stopped." });
+                await recordRunResult(runId, { status: "cancelled" });
+                return { status: "cancelled" as const };
+            }
+            if (error instanceof AllProvidersFailedError) {
+                await publishStatus(projectId, { kind: "spec", runId, step: "error", text: "Spec generation failed." });
+                await publishAssistantMessage(projectId, describeProviderFailure(error), { runId });
+                await recordRunResult(runId, { status: "failed" });
+                return { status: "failed" as const, reason: "providers" };
+            }
+            throw error;
         } finally {
             await setAiPresence(projectId, { cursor: null, thinking: false });
         }
     },
     onFailure: async ({ payload, ctx }) => {
         await publishStatus(payload.projectId, { kind: "spec", runId: ctx.run.id, step: "error", text: "Spec generation failed." });
+        await recordRunResult(ctx.run.id, { status: "failed" });
     },
 });

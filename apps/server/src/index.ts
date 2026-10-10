@@ -6,8 +6,10 @@ import cors from "cors";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import {
+    BLOB_READ_WRITE_TOKEN,
     CORS_ORIGIN,
     DEBUG_IP_ENDPOINT,
+    GOOGLE_CLIENT_ID,
     ENABLE_QUEUE_DASHBOARD,
     NODE_ENV,
     PORT,
@@ -30,6 +32,7 @@ import { sessionRoutes } from "./routes/session.route";
 import { projectRoutes } from "./routes/project.route";
 import { aiRoutes } from "./routes/ai.route";
 import { liveblocksRoutes } from "./routes/liveblocks.route";
+import { gmailRoutes } from "./routes/gmail.route";
 
 /**
  * Basic auth for the queue dashboard. Compared with a timing-safe digest comparison so the
@@ -59,6 +62,17 @@ const matchesSecret = (candidate: string | undefined, expected: string): boolean
 };
 
 async function main() {
+    // Fail at boot, not on the first sign-up or save, if production is missing what users depend on.
+    if (NODE_ENV === "production") {
+        if (!BLOB_READ_WRITE_TOKEN) {
+            throw new Error("Missing required production configuration: BLOB_READ_WRITE_TOKEN (canvases and specs would be lost on redeploy)");
+        }
+    }
+
+    if (!GOOGLE_CLIENT_ID) {
+        console.warn("GOOGLE_CLIENT_ID is not set: Google sign-in (POST /auth/google) is disabled and will answer 500.");
+    }
+
     // Fail at boot, not on the first request, if the database is unreachable.
     await connectDB();
 
@@ -159,6 +173,8 @@ async function main() {
     app.use("/projects", projectRoutes);
     app.use("/ai", aiRoutes);
     app.use("/liveblocks", liveblocksRoutes);
+    // The path is fixed by the redirect URI registered with Google (/api/auth/gmail/callback).
+    app.use("/api/auth/gmail", gmailRoutes);
 
     // Registered before listening, so a request can never arrive at a server whose 404 and error
     // handlers aren't mounted yet.
