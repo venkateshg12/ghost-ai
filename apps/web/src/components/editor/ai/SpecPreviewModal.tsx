@@ -5,7 +5,13 @@ import { Download, FileText, Loader2 } from "lucide-react";
 import type { ProjectSpecSummary } from "@repo/types";
 import { specDownloadPath } from "@/api/project";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSpecContent } from "@/hooks/spec/useSpecContent";
 import { downloadFromApi } from "@/lib/download";
@@ -18,14 +24,20 @@ interface SpecPreviewModalProps {
 
 // Content is fetched through the API (access-checked) only while the modal is open. Esc closes it.
 const SpecPreviewModal = ({ spec, onClose }: SpecPreviewModalProps) => {
-  const { data, isLoading, error } = useSpecContent(spec?.projectId ?? "", spec?.id ?? null);
+  const { data, isLoading, error } = useSpecContent(
+    spec?.projectId ?? "",
+    spec?.id ?? null,
+  );
   const [downloading, setDownloading] = useState(false);
 
   const handleDownload = async () => {
     if (!spec) return;
     setDownloading(true);
     try {
-      await downloadFromApi(specDownloadPath(spec.projectId, spec.id), spec.fileName);
+      await downloadFromApi(
+        specDownloadPath(spec.projectId, spec.id),
+        spec.fileName,
+      );
     } finally {
       setDownloading(false);
     }
@@ -40,14 +52,29 @@ const SpecPreviewModal = ({ spec, onClose }: SpecPreviewModalProps) => {
               <FileText className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <DialogTitle className="truncate font-mono text-sm font-bold">{spec?.fileName}</DialogTitle>
+              <DialogTitle className="truncate font-mono text-sm font-bold">
+                {spec?.fileName}
+              </DialogTitle>
               <DialogDescription className="font-mono text-xs text-copy-muted">
-                {spec && new Date(spec.createdAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+                {spec &&
+                  new Date(spec.createdAt).toLocaleString("en-US", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
               </DialogDescription>
             </div>
           </div>
-          <Button size="sm" onClick={() => void handleDownload()} disabled={downloading} className="h-8 shrink-0 gap-1.5 rounded-xl px-3 font-mono text-xs">
-            {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          <Button
+            size="sm"
+            onClick={() => void handleDownload()}
+            disabled={downloading}
+            className="h-8 shrink-0 gap-1.5 rounded-xl px-3 font-mono text-xs"
+          >
+            {downloading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5" />
+            )}
             <span>Download .md</span>
           </Button>
         </DialogHeader>
@@ -59,7 +86,9 @@ const SpecPreviewModal = ({ spec, onClose }: SpecPreviewModalProps) => {
               <span>Loading spec…</span>
             </div>
           ) : error ? (
-            <p className="p-4 text-center font-mono text-xs text-state-error">{error.message}</p>
+            <p className="p-4 text-center font-mono text-xs text-state-error">
+              {error.message}
+            </p>
           ) : data ? (
             <MarkdownView content={data.content} />
           ) : null}
