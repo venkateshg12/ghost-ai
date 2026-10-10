@@ -1,0 +1,545 @@
+[
+  {
+    "id": "dropCheckConstraint.taskRun.taskRun_kind_check_fb61b3b4",
+    "label": "Drop check constraint \"taskRun_kind_check_fb61b3b4\" on \"taskRun\"",
+    "operationClass": "destructive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "taskRun_kind_check_fb61b3b4",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"taskRun_kind_check_fb61b3b4\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "taskRun_kind_check_fb61b3b4",
+          "public",
+          "\"public\".\"taskRun\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "drop check constraint \"taskRun_kind_check_fb61b3b4\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" DROP CONSTRAINT \"taskRun_kind_check_fb61b3b4\""
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"taskRun_kind_check_fb61b3b4\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "taskRun_kind_check_fb61b3b4",
+          "public",
+          "\"public\".\"taskRun\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.taskRun.completedAt",
+    "label": "Add column \"completedAt\" to \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "completedAt",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"completedAt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "completedAt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"completedAt\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD COLUMN \"completedAt\" timestamptz"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"completedAt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "completedAt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.taskRun.fellBack",
+    "label": "Add column \"fellBack\" to \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "fellBack",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"fellBack\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "fellBack"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"fellBack\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD COLUMN \"fellBack\" bool DEFAULT false NOT NULL"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"fellBack\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "fellBack"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.taskRun.inputTokens",
+    "label": "Add column \"inputTokens\" to \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "inputTokens",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"inputTokens\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "inputTokens"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"inputTokens\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD COLUMN \"inputTokens\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"inputTokens\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "inputTokens"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.taskRun.latencyMs",
+    "label": "Add column \"latencyMs\" to \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "latencyMs",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"latencyMs\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "latencyMs"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"latencyMs\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD COLUMN \"latencyMs\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"latencyMs\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "latencyMs"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.taskRun.model",
+    "label": "Add column \"model\" to \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "model",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"model\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "model"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"model\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD COLUMN \"model\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"model\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "model"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.taskRun.outputTokens",
+    "label": "Add column \"outputTokens\" to \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "outputTokens",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"outputTokens\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "outputTokens"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"outputTokens\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD COLUMN \"outputTokens\" int4"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"outputTokens\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "outputTokens"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.taskRun.prompt",
+    "label": "Add column \"prompt\" to \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "prompt",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"prompt\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "prompt"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"prompt\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD COLUMN \"prompt\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"prompt\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "prompt"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.taskRun.provider",
+    "label": "Add column \"provider\" to \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "provider",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"provider\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "provider"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"provider\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD COLUMN \"provider\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"provider\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "provider"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.taskRun.snapshotPath",
+    "label": "Add column \"snapshotPath\" to \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "snapshotPath",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"snapshotPath\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "snapshotPath"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"snapshotPath\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD COLUMN \"snapshotPath\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"snapshotPath\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "snapshotPath"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "column.public.taskRun.status",
+    "label": "Add column \"status\" to \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "column",
+        "name": "status",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure column \"status\" is missing",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "status"
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add column \"status\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD COLUMN \"status\" text"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify column \"status\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"information_schema\".\"columns\" WHERE (\"table_schema\" = $1 AND \"table_name\" = $2 AND \"column_name\" = $3)) AS \"result\"",
+        "params": [
+          "public",
+          "taskRun",
+          "status"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "checkConstraint.taskRun.taskRun_kind_check_269691ce",
+    "label": "Add check constraint \"taskRun_kind_check_269691ce\" on \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "checkConstraint",
+        "name": "taskRun_kind_check_269691ce",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"taskRun_kind_check_269691ce\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "taskRun_kind_check_269691ce",
+          "public",
+          "\"public\".\"taskRun\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add check constraint \"taskRun_kind_check_269691ce\"",
+        "sql": "ALTER TABLE \"public\".\"taskRun\" ADD CONSTRAINT \"taskRun_kind_check_269691ce\" CHECK (\"kind\" IN ('design', 'spec', 'chat', 'review', 'image'))"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"taskRun_kind_check_269691ce\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "taskRun_kind_check_269691ce",
+          "public",
+          "\"public\".\"taskRun\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.taskRun.taskRun_projectId_createdAt_idx_d2d6484f",
+    "label": "Create index \"taskRun_projectId_createdAt_idx_d2d6484f\" on \"taskRun\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "taskRun_projectId_createdAt_idx_d2d6484f",
+        "table": "taskRun"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"taskRun_projectId_createdAt_idx_d2d6484f\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"taskRun_projectId_createdAt_idx_d2d6484f\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"taskRun_projectId_createdAt_idx_d2d6484f\"",
+        "sql": "CREATE INDEX \"taskRun_projectId_createdAt_idx_d2d6484f\" ON \"public\".\"taskRun\" (\"projectId\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"taskRun_projectId_createdAt_idx_d2d6484f\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"taskRun_projectId_createdAt_idx_d2d6484f\""
+        ]
+      }
+    ]
+  }
+]

@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'f2765448c946eb0392ad46bf51bdca03cf8a4aa8ac8703994319d2b53d12aafb'>;
+  StorageHashBase<'a97bd5e98e8295356a6a9795cbd9e00dcc2c77bad70405cc84222c718f04c522'>;
 export type ExecutionHash =
   ExecutionHashBase<'2281ecc118f5f688e22b52f6c4a9e86266a8818ec3b63a0ae1da0bd56c1aa402'>;
 export type ProfileHash =
@@ -278,10 +278,20 @@ export type FieldOutputTypes = {
     readonly TaskRun: {
       readonly id: CodecTypes['pg/uuid@1']['output'];
       readonly runId: CodecTypes['pg/text@1']['output'];
-      readonly kind: 'design' | 'spec';
+      readonly kind: 'design' | 'spec' | 'chat' | 'review' | 'image';
       readonly projectId: CodecTypes['pg/uuid@1']['output'];
       readonly userId: CodecTypes['pg/uuid@1']['output'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly provider: CodecTypes['pg/text@1']['output'] | null;
+      readonly model: CodecTypes['pg/text@1']['output'] | null;
+      readonly latencyMs: CodecTypes['pg/int4@1']['output'] | null;
+      readonly inputTokens: CodecTypes['pg/int4@1']['output'] | null;
+      readonly outputTokens: CodecTypes['pg/int4@1']['output'] | null;
+      readonly fellBack: CodecTypes['pg/bool@1']['output'];
+      readonly snapshotPath: CodecTypes['pg/text@1']['output'] | null;
+      readonly prompt: CodecTypes['pg/text@1']['output'] | null;
+      readonly status: CodecTypes['pg/text@1']['output'] | null;
+      readonly completedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
     };
     readonly User: {
       readonly id: CodecTypes['pg/uuid@1']['output'];
@@ -344,10 +354,20 @@ export type FieldInputTypes = {
     readonly TaskRun: {
       readonly id: CodecTypes['pg/uuid@1']['input'];
       readonly runId: CodecTypes['pg/text@1']['input'];
-      readonly kind: 'design' | 'spec';
+      readonly kind: 'design' | 'spec' | 'chat' | 'review' | 'image';
       readonly projectId: CodecTypes['pg/uuid@1']['input'];
       readonly userId: CodecTypes['pg/uuid@1']['input'];
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly provider: CodecTypes['pg/text@1']['input'] | null;
+      readonly model: CodecTypes['pg/text@1']['input'] | null;
+      readonly latencyMs: CodecTypes['pg/int4@1']['input'] | null;
+      readonly inputTokens: CodecTypes['pg/int4@1']['input'] | null;
+      readonly outputTokens: CodecTypes['pg/int4@1']['input'] | null;
+      readonly fellBack: CodecTypes['pg/bool@1']['input'];
+      readonly snapshotPath: CodecTypes['pg/text@1']['input'] | null;
+      readonly prompt: CodecTypes['pg/text@1']['input'] | null;
+      readonly status: CodecTypes['pg/text@1']['input'] | null;
+      readonly completedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
     };
     readonly User: {
       readonly id: CodecTypes['pg/uuid@1']['input'];
@@ -408,11 +428,21 @@ export type StorageColumnTypes = {
       readonly userId: CodecTypes['pg/uuid@1']['output'];
     };
     readonly taskRun: {
+      readonly completedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly fellBack: CodecTypes['pg/bool@1']['output'];
       readonly id: CodecTypes['pg/uuid@1']['output'];
-      readonly kind: 'design' | 'spec';
+      readonly inputTokens: CodecTypes['pg/int4@1']['output'] | null;
+      readonly kind: 'design' | 'spec' | 'chat' | 'review' | 'image';
+      readonly latencyMs: CodecTypes['pg/int4@1']['output'] | null;
+      readonly model: CodecTypes['pg/text@1']['output'] | null;
+      readonly outputTokens: CodecTypes['pg/int4@1']['output'] | null;
       readonly projectId: CodecTypes['pg/uuid@1']['output'];
+      readonly prompt: CodecTypes['pg/text@1']['output'] | null;
+      readonly provider: CodecTypes['pg/text@1']['output'] | null;
       readonly runId: CodecTypes['pg/text@1']['output'];
+      readonly snapshotPath: CodecTypes['pg/text@1']['output'] | null;
+      readonly status: CodecTypes['pg/text@1']['output'] | null;
       readonly userId: CodecTypes['pg/uuid@1']['output'];
     };
     readonly user: {
@@ -474,11 +504,21 @@ export type StorageColumnInputTypes = {
       readonly userId: CodecTypes['pg/uuid@1']['input'];
     };
     readonly taskRun: {
+      readonly completedAt: CodecTypes['pg/timestamptz-string@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly fellBack: CodecTypes['pg/bool@1']['input'];
       readonly id: CodecTypes['pg/uuid@1']['input'];
-      readonly kind: 'design' | 'spec';
+      readonly inputTokens: CodecTypes['pg/int4@1']['input'] | null;
+      readonly kind: 'design' | 'spec' | 'chat' | 'review' | 'image';
+      readonly latencyMs: CodecTypes['pg/int4@1']['input'] | null;
+      readonly model: CodecTypes['pg/text@1']['input'] | null;
+      readonly outputTokens: CodecTypes['pg/int4@1']['input'] | null;
       readonly projectId: CodecTypes['pg/uuid@1']['input'];
+      readonly prompt: CodecTypes['pg/text@1']['input'] | null;
+      readonly provider: CodecTypes['pg/text@1']['input'] | null;
       readonly runId: CodecTypes['pg/text@1']['input'];
+      readonly snapshotPath: CodecTypes['pg/text@1']['input'] | null;
+      readonly status: CodecTypes['pg/text@1']['input'] | null;
       readonly userId: CodecTypes['pg/uuid@1']['input'];
     };
     readonly user: {
@@ -576,10 +616,20 @@ export namespace Models {
   export type public_TaskRun = {
     id: CodecTypes['pg/uuid@1']['output'];
     runId: CodecTypes['pg/text@1']['output'];
-    kind: 'design' | 'spec';
+    kind: 'design' | 'spec' | 'chat' | 'review' | 'image';
     projectId: CodecTypes['pg/uuid@1']['output'];
     userId: CodecTypes['pg/uuid@1']['output'];
     createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    provider: CodecTypes['pg/text@1']['output'] | null;
+    model: CodecTypes['pg/text@1']['output'] | null;
+    latencyMs: CodecTypes['pg/int4@1']['output'] | null;
+    inputTokens: CodecTypes['pg/int4@1']['output'] | null;
+    outputTokens: CodecTypes['pg/int4@1']['output'] | null;
+    fellBack: CodecTypes['pg/bool@1']['output'];
+    snapshotPath: CodecTypes['pg/text@1']['output'] | null;
+    prompt: CodecTypes['pg/text@1']['output'] | null;
+    status: CodecTypes['pg/text@1']['output'] | null;
+    completedAt: CodecTypes['pg/timestamptz-string@1']['output'] | null;
     project: public_Project;
     user: public_User;
     readonly [RelationKeys]?: 'project' | 'user';
@@ -929,6 +979,60 @@ type ContractBase = Omit<
                   readonly nullable: false;
                   readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
                 };
+                readonly provider: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly model: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly latencyMs: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly inputTokens: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly outputTokens: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly fellBack: {
+                  readonly nativeType: 'bool';
+                  readonly codecId: 'pg/bool@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/bool@1', false>;
+                  };
+                };
+                readonly snapshotPath: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly prompt: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly completedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
               };
               primaryKey: { readonly columns: readonly ['id'] };
               uniques: readonly [{ readonly columns: readonly ['runId'] }];
@@ -937,6 +1041,12 @@ type ContractBase = Omit<
                   readonly name: 'taskRun_userId_projectId_idx_a2a73bc7';
                   readonly prefix: 'taskRun_userId_projectId_idx';
                   readonly columns: readonly ['userId', 'projectId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'taskRun_projectId_createdAt_idx_d2d6484f';
+                  readonly prefix: 'taskRun_projectId_createdAt_idx';
+                  readonly columns: readonly ['projectId', 'createdAt'];
                   readonly unique: false;
                 },
                 {
@@ -1128,7 +1238,7 @@ type ContractBase = Omit<
           readonly valueSet: {
             readonly AiRunKind: {
               readonly kind: 'valueSet';
-              readonly values: readonly ['design', 'spec'];
+              readonly values: readonly ['design', 'spec', 'chat', 'review', 'image'];
             };
             readonly AuthProvider: {
               readonly kind: 'valueSet';
@@ -1465,6 +1575,49 @@ type ContractBase = Omit<
                   readonly codecId: 'pg/timestamptz-string@1';
                 };
               };
+              readonly provider: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly model: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly latencyMs: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly inputTokens: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly outputTokens: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly fellBack: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/bool@1' };
+              };
+              readonly snapshotPath: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly prompt: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly status: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly completedAt: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
             };
             readonly relations: {
               readonly project: {
@@ -1499,6 +1652,16 @@ type ContractBase = Omit<
                 readonly projectId: { readonly column: 'projectId' };
                 readonly userId: { readonly column: 'userId' };
                 readonly createdAt: { readonly column: 'createdAt' };
+                readonly provider: { readonly column: 'provider' };
+                readonly model: { readonly column: 'model' };
+                readonly latencyMs: { readonly column: 'latencyMs' };
+                readonly inputTokens: { readonly column: 'inputTokens' };
+                readonly outputTokens: { readonly column: 'outputTokens' };
+                readonly fellBack: { readonly column: 'fellBack' };
+                readonly snapshotPath: { readonly column: 'snapshotPath' };
+                readonly prompt: { readonly column: 'prompt' };
+                readonly status: { readonly column: 'status' };
+                readonly completedAt: { readonly column: 'completedAt' };
               };
             };
           };
@@ -1666,6 +1829,9 @@ type ContractBase = Omit<
             readonly members: readonly [
               { readonly name: 'design'; readonly value: 'design' },
               { readonly name: 'spec'; readonly value: 'spec' },
+              { readonly name: 'chat'; readonly value: 'chat' },
+              { readonly name: 'review'; readonly value: 'review' },
+              { readonly name: 'image'; readonly value: 'image' },
             ];
           };
         };

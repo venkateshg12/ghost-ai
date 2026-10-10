@@ -47,6 +47,18 @@
               {
                 "name": "spec",
                 "value": "spec"
+              },
+              {
+                "name": "chat",
+                "value": "chat"
+              },
+              {
+                "name": "review",
+                "value": "review"
+              },
+              {
+                "name": "image",
+                "value": "image"
               }
             ]
           },
@@ -504,6 +516,13 @@
           },
           "TaskRun": {
             "fields": {
+              "completedAt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -511,10 +530,24 @@
                   "kind": "scalar"
                 }
               },
+              "fellBack": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
               "id": {
                 "nullable": false,
                 "type": {
                   "codecId": "pg/uuid@1",
+                  "kind": "scalar"
+                }
+              },
+              "inputTokens": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
                   "kind": "scalar"
                 }
               },
@@ -531,6 +564,27 @@
                   "plane": "domain"
                 }
               },
+              "latencyMs": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "model": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "outputTokens": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
               "projectId": {
                 "nullable": false,
                 "type": {
@@ -538,8 +592,36 @@
                   "kind": "scalar"
                 }
               },
+              "prompt": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "provider": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "runId": {
                 "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "snapshotPath": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": true,
                 "type": {
                   "codecId": "pg/text@1",
                   "kind": "scalar"
@@ -589,20 +671,50 @@
             },
             "storage": {
               "fields": {
+                "completedAt": {
+                  "column": "completedAt"
+                },
                 "createdAt": {
                   "column": "createdAt"
+                },
+                "fellBack": {
+                  "column": "fellBack"
                 },
                 "id": {
                   "column": "id"
                 },
+                "inputTokens": {
+                  "column": "inputTokens"
+                },
                 "kind": {
                   "column": "kind"
+                },
+                "latencyMs": {
+                  "column": "latencyMs"
+                },
+                "model": {
+                  "column": "model"
+                },
+                "outputTokens": {
+                  "column": "outputTokens"
                 },
                 "projectId": {
                   "column": "projectId"
                 },
+                "prompt": {
+                  "column": "prompt"
+                },
+                "provider": {
+                  "column": "provider"
+                },
                 "runId": {
                   "column": "runId"
+                },
+                "snapshotPath": {
+                  "column": "snapshotPath"
+                },
+                "status": {
+                  "column": "status"
                 },
                 "userId": {
                   "column": "userId"
@@ -1222,12 +1334,17 @@
             "taskRun": {
               "checks": [
                 {
-                  "expression": "\"kind\" IN ('design', 'spec')",
-                  "name": "taskRun_kind_check_fb61b3b4",
+                  "expression": "\"kind\" IN ('design', 'spec', 'chat', 'review', 'image')",
+                  "name": "taskRun_kind_check_269691ce",
                   "prefix": "taskRun_kind_check"
                 }
               ],
               "columns": {
+                "completedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "default": {
@@ -1237,10 +1354,24 @@
                   "nativeType": "timestamptz",
                   "nullable": false
                 },
+                "fellBack": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": false
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
                 "id": {
                   "codecId": "pg/uuid@1",
                   "nativeType": "uuid",
                   "nullable": false
+                },
+                "inputTokens": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
                 },
                 "kind": {
                   "codecId": "pg/text@1",
@@ -1253,15 +1384,50 @@
                     "plane": "storage"
                   }
                 },
+                "latencyMs": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "model": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "outputTokens": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
                 "projectId": {
                   "codecId": "pg/uuid@1",
                   "nativeType": "uuid",
                   "nullable": false
                 },
+                "prompt": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "provider": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "runId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
                   "nullable": false
+                },
+                "snapshotPath": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
                 },
                 "userId": {
                   "codecId": "pg/uuid@1",
@@ -1306,6 +1472,15 @@
                 }
               ],
               "indexes": [
+                {
+                  "columns": [
+                    "projectId",
+                    "createdAt"
+                  ],
+                  "name": "taskRun_projectId_createdAt_idx_d2d6484f",
+                  "prefix": "taskRun_projectId_createdAt_idx",
+                  "unique": false
+                },
                 {
                   "columns": [
                     "projectId"
@@ -1573,7 +1748,10 @@
               "kind": "valueSet",
               "values": [
                 "design",
-                "spec"
+                "spec",
+                "chat",
+                "review",
+                "image"
               ]
             },
             "AuthProvider": {
@@ -1610,7 +1788,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "f2765448c946eb0392ad46bf51bdca03cf8a4aa8ac8703994319d2b53d12aafb"
+    "storageHash": "a97bd5e98e8295356a6a9795cbd9e00dcc2c77bad70405cc84222c718f04c522"
   },
   "execution": {
     "executionHash": "2281ecc118f5f688e22b52f6c4a9e86266a8818ec3b63a0ae1da0bd56c1aa402",
