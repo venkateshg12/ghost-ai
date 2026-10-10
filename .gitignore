@@ -72,11 +72,19 @@ storybook-static/
 /.agents/
 /.skills/
 /.claude/
-/CLAUDE.md
 
-# Design references (local only)
+# MCP configuration
+!.mcp.json
+
+# Markdown files (no .md files except CLAUDE.md and AGENTS.md in the root)
+*.md
+!/CLAUDE.md
+!/AGENTS.md
+
+# Design references and tasks (local only)
 /design-preferences/
 /inspiration/
+/tasks/
 
 # Context images (local only)
 context/**/*.png
