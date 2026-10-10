@@ -18,10 +18,13 @@
     "contract:emit": "prisma contract emit",
     "db:plan": "prisma contract emit && prisma migration plan --name",
     "db:apply": "pnpm run db:sql && prisma db migrate && prisma db sign",
-    "db:sql": "tsx src/scripts/write-migration-sql.ts"
+    "db:sql": "tsx src/scripts/write-migration-sql.ts",
+    "test": "vitest run",
+    "ai:eval": "tsx src/scripts/ai-eval.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.90",
+    "@ai-sdk/openai-compatible": "^3.0.67",
     "@bull-board/api": "^8.1.2",
     "@bull-board/express": "^8.1.2",
     "@liveblocks/node": "3.21.0",
@@ -39,6 +42,7 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "google-auth-library": "^9.15.0",
+    "googleapis": "^184.0.0",
     "helmet": "^8.3.0",
     "ioredis": "^5.11.1",
     "ipaddr.js": "^2.5.0",
@@ -46,7 +50,6 @@
     "morgan": "^1.11.0",
     "pg": "^8.23.0",
     "proxy-addr": "^2.0.8",
-    "resend": "^4.8.0",
     "tsx": "^4.22.4",
     "zod": "^4.4.3"
   },
@@ -67,6 +70,7 @@
     "eslint": "^9.39.1",
     "prisma": "8.0.0-rc.15",
     "trigger.dev": "^4.7.3",
-    "typescript": "5.9.2"
+    "typescript": "5.9.2",
+    "vitest": "^5.0.3"
   }
 }

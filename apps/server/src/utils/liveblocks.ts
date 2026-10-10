@@ -1,5 +1,13 @@
 import { Liveblocks, LiveblocksError } from "@liveblocks/node";
-import { AI_CHAT_FEED, AI_STATUS_FEED, type AiStatusPayload, type ChatMessagePayload } from "@repo/types";
+import {
+    AI_CHAT_FEED,
+    AI_STATUS_FEED,
+    chatMessagePayloadSchema,
+    reviewPayloadSchema,
+    type AiStatusPayload,
+    type ChatMessagePayload,
+    type ReviewPayload,
+} from "@repo/types";
 import { LIVEBLOCKS_SECRET_KEY } from "../constants/env";
 
 // One client for the whole process. It only holds a secret and a fetch wrapper, so it is cheap.
@@ -70,17 +78,74 @@ export const publishStatus = async (roomId: string, status: Omit<AiStatusPayload
     }
 };
 
-export const publishAssistantMessage = async (roomId: string, content: string) => {
-    const message: ChatMessagePayload = {
-        type: "chat",
-        role: "assistant",
-        content,
-        sender: { id: AI_PARTICIPANT.id, name: AI_PARTICIPANT.name, color: AI_PARTICIPANT.color },
-    };
+type AssistantExtras = Partial<Pick<ChatMessagePayload, "streaming" | "runId" | "meta" | "suggestions" | "canUndo">>;
+
+// Feed data must be plain JSON: round-tripping drops `undefined` fields instead of sending them.
+const toJson = <T>(value: T) => JSON.parse(JSON.stringify(value)) as T;
+
+export const assistantPayload = (content: string, extras: AssistantExtras = {}): ChatMessagePayload => ({
+    type: "chat",
+    role: "assistant",
+    content,
+    sender: { id: AI_PARTICIPANT.id, name: AI_PARTICIPANT.name, color: AI_PARTICIPANT.color },
+    ...extras,
+});
+
+/** Posts a Ghost AI reply to the room's chat. Returns the message id (to stream into), or null if it could not be posted. */
+export const publishAssistantMessage = async (roomId: string, content: string, extras: AssistantExtras = {}): Promise<string | null> => {
     try {
-        await liveblocks.createFeedMessage({ roomId, feedId: AI_CHAT_FEED, data: message });
+        const message = await liveblocks.createFeedMessage({
+            roomId,
+            feedId: AI_CHAT_FEED,
+            data: toJson(assistantPayload(content, extras)),
+        });
+        return message.id;
     } catch (error) {
         console.warn(`[Liveblocks] chat publish failed for room ${roomId}:`, error);
+        return null;
+    }
+};
+
+/*
+  Rewrites a message in place. Used to stream a reply: everyone in the room sees the same message
+  grow. A failed update is logged and skipped — the next one carries the full text anyway.
+ */
+export const updateAssistantMessage = async (roomId: string, messageId: string, content: string, extras: AssistantExtras = {}) => {
+    try {
+        await liveblocks.updateFeedMessage({
+            roomId,
+            feedId: AI_CHAT_FEED,
+            messageId,
+            data: toJson(assistantPayload(content, extras)),
+        });
+    } catch (error) {
+        console.warn(`[Liveblocks] chat update failed for room ${roomId}:`, error);
+    }
+};
+
+export interface HistoryMessage {
+    role: "user" | "assistant";
+    content: string;
+}
+
+/*
+  The recent conversation, read from the room's feed rather than taken from the client: it includes
+  teammates' messages and cannot be forged by one browser. Messages still streaming are left out.
+ */
+export const readChatHistory = async (roomId: string, limit = 12): Promise<HistoryMessage[]> => {
+    try {
+        const { data } = await liveblocks.getFeedMessages({ roomId, feedId: AI_CHAT_FEED });
+        return data
+            .flatMap((message) => {
+                const parsed = chatMessagePayloadSchema.safeParse(message.data);
+                return parsed.success && !parsed.data.streaming ? [{ createdAt: message.createdAt, ...parsed.data }] : [];
+            })
+            .sort((a, b) => a.createdAt - b.createdAt)
+            .slice(-limit)
+            .map(({ role, content }) => ({ role, content: content.slice(0, 4000) }));
+    } catch (error) {
+        console.warn(`[Liveblocks] reading chat history failed for room ${roomId}:`, error);
+        return [];
     }
 };
 
@@ -101,5 +166,62 @@ export const setAiPresence = async (
         });
     } catch (error) {
         console.warn(`[Liveblocks] AI presence update failed for room ${roomId}:`, error);
+    }
+};
+
+/** After an undo, the original reply must stop offering Undo (and nothing older should either). */
+export const markRunReverted = async (roomId: string, runId: string) => {
+    try {
+        const { data } = await liveblocks.getFeedMessages({ roomId, feedId: AI_CHAT_FEED });
+        for (const message of data) {
+            const parsed = chatMessagePayloadSchema.safeParse(message.data);
+            if (parsed.success && parsed.data.runId === runId && parsed.data.canUndo) {
+                await liveblocks.updateFeedMessage({
+                    roomId,
+                    feedId: AI_CHAT_FEED,
+                    messageId: message.id,
+                    data: toJson({ ...parsed.data, canUndo: false }),
+                });
+            }
+        }
+    } catch (error) {
+        console.warn(`[Liveblocks] could not clear Undo for run ${runId}:`, error);
+    }
+};
+
+/** Posts a review into the room's chat feed, where the Review tab (and everyone in the room) reads it. */
+export const publishReview = async (roomId: string, review: ReviewPayload): Promise<string | null> => {
+    try {
+        const message = await liveblocks.createFeedMessage({ roomId, feedId: AI_CHAT_FEED, data: toJson(review) });
+        return message.id;
+    } catch (error) {
+        console.warn(`[Liveblocks] review publish failed for room ${roomId}:`, error);
+        return null;
+    }
+};
+
+/** A review, found by the run that produced it, read from the room (so a client can't supply its own operations). */
+export const findReview = async (roomId: string, reviewRunId: string): Promise<{ messageId: string; review: ReviewPayload } | null> => {
+    const { data } = await liveblocks.getFeedMessages({ roomId, feedId: AI_CHAT_FEED });
+    for (const message of data) {
+        const parsed = reviewPayloadSchema.safeParse(message.data);
+        if (parsed.success && parsed.data.runId === reviewRunId) return { messageId: message.id, review: parsed.data };
+    }
+    return null;
+};
+
+export const markRecommendationApplied = async (roomId: string, messageId: string, review: ReviewPayload, recommendationId: string) => {
+    try {
+        await liveblocks.updateFeedMessage({
+            roomId,
+            feedId: AI_CHAT_FEED,
+            messageId,
+            data: toJson({
+                ...review,
+                recommendations: review.recommendations.map((rec) => (rec.id === recommendationId ? { ...rec, applied: true } : rec)),
+            }),
+        });
+    } catch (error) {
+        console.warn(`[Liveblocks] could not mark recommendation applied in room ${roomId}:`, error);
     }
 };

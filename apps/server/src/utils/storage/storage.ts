@@ -25,8 +25,8 @@ const localFilePath = (pathname: string) => {
     return filePath;
 };
 
-/** Writes (or overwrites) a text object and returns the reference to store in the database. */
-export const putText = async (pathname: string, content: string, contentType: string): Promise<string> => {
+/** Writes (or overwrites) an object and returns the reference to store in the database. */
+export const putBytes = async (pathname: string, content: Buffer | string, contentType: string): Promise<string> => {
     if (useBlob) {
         const blob = await put(pathname, content, {
             access: "private",
@@ -40,15 +40,15 @@ export const putText = async (pathname: string, content: string, contentType: st
 
     const filePath = localFilePath(pathname);
     await mkdir(path.dirname(filePath), { recursive: true });
-    await writeFile(filePath, content, "utf8");
+    await writeFile(filePath, content);
     return `${LOCAL_PREFIX}${pathname}`;
 };
 
-/** Reads a text object by its stored reference, or `null` if it no longer exists. */
-export const readText = async (reference: string): Promise<string | null> => {
+/** Reads an object by its stored reference, or `null` if it no longer exists. */
+export const readBytes = async (reference: string): Promise<Buffer | null> => {
     if (reference.startsWith(LOCAL_PREFIX)) {
         try {
-            return await readFile(localFilePath(reference.slice(LOCAL_PREFIX.length)), "utf8");
+            return await readFile(localFilePath(reference.slice(LOCAL_PREFIX.length)));
         } catch (error) {
             if ((error as NodeJS.ErrnoException).code === "ENOENT") return null;
             throw error;
@@ -57,8 +57,13 @@ export const readText = async (reference: string): Promise<string | null> => {
 
     const result = await get(reference, { access: "private", token: BLOB_READ_WRITE_TOKEN });
     if (!result || result.statusCode !== 200 || !result.stream) return null;
-    return new Response(result.stream).text();
+    return Buffer.from(await new Response(result.stream).arrayBuffer());
 };
+
+/** Text objects are bytes in UTF-8. */
+export const putText = (pathname: string, content: string, contentType: string): Promise<string> => putBytes(pathname, content, contentType);
+
+export const readText = async (reference: string): Promise<string | null> => (await readBytes(reference))?.toString("utf8") ?? null;
 
 /** Best-effort delete; a missing object is not an error. */
 export const removeObject = async (reference: string): Promise<void> => {
@@ -73,4 +78,7 @@ export const storagePaths = {
     canvas: (projectId: string) => `canvas/${projectId}.json`,
     spec: (projectId: string, specId: string) => `specs/${projectId}/${specId}.md`,
     projectFolder: (projectId: string) => `specs/${projectId}`,
+    canvasHistory: (projectId: string, runId: string) => `canvas-history/${projectId}/${runId}.json`,
+    // Uploaded sketches. Deleted once the run that used them finishes.
+    upload: (projectId: string, id: string, extension: string) => `uploads/${projectId}/${id}.${extension}`,
 };

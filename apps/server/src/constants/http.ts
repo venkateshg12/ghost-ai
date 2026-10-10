@@ -6,6 +6,8 @@ export const UNAUTHORIZED = 401;
 export const FORBIDDEN = 403;
 export const NOT_FOUND = 404;
 export const CONFLICT = 409;
+export const PAYLOAD_TOO_LARGE = 413;
+export const UNSUPPORTED_MEDIA_TYPE = 415;
 export const UNPROCESSABLE_CONTENT = 422;
 export const TOO_MANY_REQUESTS = 429;
 export const INTERNAL_SERVER_ERROR = 500;
@@ -21,6 +23,8 @@ export type HttpStatusCode =
 | typeof FORBIDDEN
 | typeof NOT_FOUND
 | typeof CONFLICT
+| typeof PAYLOAD_TOO_LARGE
+| typeof UNSUPPORTED_MEDIA_TYPE
 | typeof UNPROCESSABLE_CONTENT
 | typeof TOO_MANY_REQUESTS
 | typeof INTERNAL_SERVER_ERROR

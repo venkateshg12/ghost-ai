@@ -2,7 +2,8 @@ import type { IncomingMessage } from "http";
 import ipaddr from "ipaddr.js";
 import proxyaddr from "proxy-addr";
 
-import { TRUSTED_PROXY_CIDRS } from "../../constants/env";
+import crypto from "node:crypto";
+import { PROXY_SHARED_SECRET, TRUSTED_PROXY_CIDRS } from "../../constants/env";
 import type { RateLimiterRequest } from "../../types/ratelimiter.types";
 
 /*
@@ -27,6 +28,33 @@ const EDGE_HEADERS = [
 ] as const;
 
 /*
+  Headers set by our own same-origin proxy (the web app's /backend route). They are believed only when the
+  request also carries PROXY_SHARED_SECRET, which no browser ever sees: the browser talks to the web app, and
+  the web app adds both headers itself (overwriting anything the browser sent). Without the secret they are
+  ignored, so nobody can pick their own rate-limit bucket by sending them.
+ */
+const PROXY_SECRET_HEADER = "x-ghost-proxy-secret";
+const PROXY_CLIENT_IP_HEADER = "x-ghost-client-ip";
+
+// Hashing first keeps the comparison length-independent: timingSafeEqual throws on a length mismatch.
+const safeEqual = (a: string, b: string) =>
+    crypto.timingSafeEqual(crypto.createHash("sha256").update(a).digest(), crypto.createHash("sha256").update(b).digest());
+
+/** The visitor IP reported by our own proxy, or undefined if the request is not from it (or reports nothing valid). */
+const proxiedClientIp = (req: RateLimiterRequest): string | undefined => {
+    if (!PROXY_SHARED_SECRET) return undefined;
+
+    const supplied = getHeaderValue(req, PROXY_SECRET_HEADER);
+    if (!supplied || !safeEqual(supplied, PROXY_SHARED_SECRET)) return undefined;
+
+    const reported = getHeaderValue(req, PROXY_CLIENT_IP_HEADER);
+    if (!reported) return undefined;
+
+    const normalized = normalizeIp(reported);
+    return isValidIp(normalized) ? normalized : undefined;
+};
+
+/*
   Compile trusted proxy configuration once at startup.
  */
 export const trustProxy = createTrustProxy(TRUSTED_PROXY_CIDRS);
@@ -35,6 +63,7 @@ export const trustProxy = createTrustProxy(TRUSTED_PROXY_CIDRS);
   Extract the client IP used by the rate limiter.
  
   Security model:
+  0. If the request proves (shared secret) that it came through our own web proxy, use the IP it reports.
   1. Determine the actual TCP peer.
   2. Only trust Cloudflare's CF-Connecting-IP when that peer
      belongs to infrastructure we explicitly trust.
@@ -46,6 +75,10 @@ export const trustProxy = createTrustProxy(TRUSTED_PROXY_CIDRS);
 export function extractClientIp(
     req: RateLimiterRequest
 ): string {
+    // Our own proxy, authenticated by a shared secret, reports the visitor directly.
+    const proxied = proxiedClientIp(req);
+    if (proxied) return proxied;
+
     const peer = req.socket?.remoteAddress;
 
     /*
