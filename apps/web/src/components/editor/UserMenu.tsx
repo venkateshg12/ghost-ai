@@ -28,7 +28,7 @@ const UserMenu = () => {
         aria-label="Account menu"
       >
         <Avatar className="h-7 w-7 border border-surface-border-subtle">
-          {user.avatar && <AvatarImage src={user.avatar} alt={user.name} />}
+          {user.avatar && <AvatarImage src={user.avatar} alt={user.name} referrerPolicy="no-referrer" />}
           <AvatarFallback className="bg-elevated font-mono text-[10px] font-bold text-copy-secondary">
             {initialsOf(user.name)}
           </AvatarFallback>

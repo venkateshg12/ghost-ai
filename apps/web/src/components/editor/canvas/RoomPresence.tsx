@@ -36,7 +36,7 @@ const RoomPresence = () => {
                 >
                   {other.info?.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element -- avatar hosts vary per user
-                    <img src={other.info.avatar} alt={name} className="h-full w-full object-cover" />
+                    <img src={other.info.avatar} alt={name} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
                   ) : (
                     <span className="font-mono text-[10px] font-bold" style={{ color }}>
                       {initialsOf(name)}
