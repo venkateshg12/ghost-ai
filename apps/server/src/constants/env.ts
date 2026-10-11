@@ -121,6 +121,7 @@ export const GEMINI_MODEL = getEnv("GEMINI_MODEL", "gemini-3.8-flash");
 // survives the first one being rate limited or overloaded. Empty disables it.
 export const GEMINI_FALLBACK_MODEL = getEnv("GEMINI_FALLBACK_MODEL", "gemini-3.1-flash-lite");
 export const AI_PROVIDER_ORDER = getEnv("AI_PROVIDER_ORDER", "nvidia,google");
+export const NVIDIA_RPM = getEnv("NVIDIA_RPM", "35");
 
 const positiveNumber = (key: string, fallback: number) => {
     const value = Number(getEnv(key, String(fallback)));
