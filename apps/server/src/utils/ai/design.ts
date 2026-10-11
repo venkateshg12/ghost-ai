@@ -1,10 +1,13 @@
+import crypto from "node:crypto";
 import { Output, streamText } from "ai";
 import { z } from "zod";
 import { NODE_COLORS, NODE_SHAPES, designOperationSchema, type DesignOperation } from "@repo/types";
-import { attemptsFor, getProviderChain, type ProviderModel } from "./providers";
-import { runWithFallback, type RunMeta } from "./runWithFallback";
+import { attemptsFor, filterOpenCircuits, getProviderChain, recordCircuitBreakerAttempts, type ProviderModel } from "./providers";
+import { AllProvidersFailedError, runWithFallback, type RunMeta } from "./runWithFallback";
 import { assertPlanQuality, repairPlan } from "./planQuality";
 import { describeGraph, type FlowGraph } from "./graph";
+import { getAiRedis } from "../redis";
+import { AI_PROVIDER_ORDER, GEMINI_MODEL, NVIDIA_MODEL } from "../../constants/env";
 
 /*
   The model doesn't return a whole new graph; it returns edits to the current one. That is what lets
@@ -68,6 +71,8 @@ export interface DesignResult {
 }
 
 export interface DesignOptions {
+    /** Project id for response caching */
+    projectId?: string;
     /** Nodes the user selected on the canvas; the model is told to focus there. */
     focusNodeIds?: string[];
     /** Cancels the run (the user pressed Stop). */
@@ -115,48 +120,120 @@ export const buildDesignPrompt = (prompt: string, graph: FlowGraph, focusNodeIds
         .join("\n\n");
 };
 
+export const computeGraphSignature = (graph: FlowGraph): string => {
+    const nodes = graph.nodes.map((n) => `${n.id}:${n.data?.label ?? ""}`).sort().join(",");
+    const edges = graph.edges.map((e) => `${e.source}->${e.target}`).sort().join(",");
+    return `${nodes}|${edges}`;
+};
+
+export const computePlanCacheKey = (
+    projectId: string,
+    prompt: string,
+    graph: FlowGraph,
+    focusNodeIds: string[] = []
+): string => {
+    const graphSig = computeGraphSignature(graph);
+    const focus = (focusNodeIds ?? []).slice().sort().join(",");
+    const raw = `${prompt.trim()}:${graphSig}:${focus}:${AI_PROVIDER_ORDER}:${NVIDIA_MODEL}:${GEMINI_MODEL}`;
+    const hash = crypto.createHash("sha256").update(raw).digest("hex");
+    return `ghost:ai:plan:${projectId}:${hash}`;
+};
+
 export const generateDesignPlan = async (prompt: string, graph: FlowGraph, options: DesignOptions = {}): Promise<DesignResult> => {
-    const chain = options.chain ?? getProviderChain();
-    if (chain.length === 0) {
+    // 1. Response cache check (Build only, scoped by projectId)
+    let cacheKey: string | null = null;
+    if (options.projectId) {
+        cacheKey = computePlanCacheKey(options.projectId, prompt, graph, options.focusNodeIds);
+        try {
+            const redis = getAiRedis();
+            const cached = await redis.get(cacheKey);
+            if (cached) {
+                const parsed = JSON.parse(cached) as DesignPlan;
+                const requested = parsed.operations.length;
+                const { plan, dropped } = repairPlan(graph, { ...parsed, operations: parsed.operations.slice(0, MAX_DESIGN_OPERATIONS) });
+                assertPlanQuality(graph, plan, requested);
+                const meta: RunMeta = {
+                    provider: "cache",
+                    modelId: "response-cache",
+                    label: "Cached plan",
+                    latencyMs: 0,
+                    fellBack: false,
+                    cached: true,
+                    attempts: [],
+                };
+                return { plan, meta, usage: {}, dropped };
+            }
+        } catch (error) {
+            console.warn("[cache] Redis read error:", error);
+        }
+    }
+
+    const rawChain = options.chain ?? getProviderChain();
+    if (rawChain.length === 0) {
         return { plan: fallbackDesignPlan(prompt, graph), meta: OFFLINE_META, usage: {}, dropped: [] };
     }
 
-    const { value, meta } = await runWithFallback(
-        attemptsFor(async (provider, signal) => {
-            // Streamed so the room can see progress during the long wait. Errors arrive as stream parts rather than
-            // thrown exceptions, so the original is kept: its HTTP status decides whether the runner retries.
-            let streamError: unknown;
-            const result = streamText({
-                model: provider.model,
-                system: DESIGN_SYSTEM_PROMPT,
-                prompt: buildDesignPrompt(prompt, graph, options.focusNodeIds),
-                output: Output.object({ schema: designPlanSchema }),
-                providerOptions: provider.providerOptions,
-                abortSignal: signal,
-                // The fallback runner owns retries; the SDK's own would multiply the wait.
-                maxRetries: 0,
-                temperature: 0.2,
-                maxOutputTokens: 8000,
-                onError: ({ error }) => {
-                    streamError = error;
-                },
-            });
+    const chain = await filterOpenCircuits(rawChain);
 
-            try {
-                for await (const partial of result.partialOutputStream) options.onProgress?.(countPartialPlan(partial));
-                const output = await result.output;
-                if (streamError) throw streamError;
-                const usage = await result.usage;
+    let value: { plan: DesignPlan; dropped: string[]; requested: number; usage: TokenUsage };
+    let meta: RunMeta;
 
-                const requested = output.operations.length;
-                const { plan, dropped } = repairPlan(graph, { ...output, operations: output.operations.slice(0, MAX_DESIGN_OPERATIONS) });
-                return { plan, dropped, requested, usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
-            } catch (error) {
-                throw streamError ?? error;
-            }
-        }, chain),
-        { signal: options.signal, validate: (result) => assertPlanQuality(graph, result.plan, result.requested) }
-    );
+    try {
+        const result = await runWithFallback(
+            attemptsFor(async (provider, signal) => {
+                // Streamed so the room can see progress during the long wait. Errors arrive as stream parts rather than
+                // thrown exceptions, so the original is kept: its HTTP status decides whether the runner retries.
+                let streamError: unknown;
+                const result = streamText({
+                    model: provider.model,
+                    system: DESIGN_SYSTEM_PROMPT,
+                    prompt: buildDesignPrompt(prompt, graph, options.focusNodeIds),
+                    output: Output.object({ schema: designPlanSchema }),
+                    providerOptions: provider.providerOptions,
+                    abortSignal: signal,
+                    // The fallback runner owns retries; the SDK's own would multiply the wait.
+                    maxRetries: 0,
+                    temperature: 0.2,
+                    maxOutputTokens: 8000,
+                    onError: ({ error }) => {
+                        streamError = error;
+                    },
+                });
+
+                try {
+                    for await (const partial of result.partialOutputStream) options.onProgress?.(countPartialPlan(partial));
+                    const output = await result.output;
+                    if (streamError) throw streamError;
+                    const usage = await result.usage;
+
+                    const requested = output.operations.length;
+                    const { plan, dropped } = repairPlan(graph, { ...output, operations: output.operations.slice(0, MAX_DESIGN_OPERATIONS) });
+                    return { plan, dropped, requested, usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
+                } catch (error) {
+                    throw streamError ?? error;
+                }
+            }, chain),
+            { signal: options.signal, validate: (result) => assertPlanQuality(graph, result.plan, result.requested) }
+        );
+        value = result.value;
+        meta = result.meta;
+        void recordCircuitBreakerAttempts(meta.attempts);
+    } catch (error) {
+        if (error instanceof AllProvidersFailedError) {
+            void recordCircuitBreakerAttempts(error.attempts);
+        }
+        throw error;
+    }
+
+    // Write successfully validated plan to cache (TTL: 1 hour)
+    if (cacheKey) {
+        try {
+            const redis = getAiRedis();
+            await redis.set(cacheKey, JSON.stringify(value.plan), "EX", 3600);
+        } catch (error) {
+            console.warn("[cache] Redis write error:", error);
+        }
+    }
 
     return { plan: value.plan, meta, usage: value.usage, dropped: value.dropped };
 };

@@ -36,6 +36,7 @@ export interface RunMeta {
     latencyMs: number;
     /** True when the first provider in the list did not produce the result. */
     fellBack: boolean;
+    cached?: boolean;
     attempts: AttemptRecord[];
 }
 

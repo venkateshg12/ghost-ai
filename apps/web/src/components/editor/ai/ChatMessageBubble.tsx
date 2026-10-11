@@ -43,6 +43,9 @@ const ModelBadge = ({ meta }: { meta: NonNullable<ChatMessage["meta"]> }) => {
         )}
       />
       {meta.label} · {seconds(meta.latencyMs)}
+      {meta.cached && (
+        <span className="text-ai-text">cached</span>
+      )}
       {meta.fellBack && (
         <span className="text-state-warning">backup model</span>
       )}
