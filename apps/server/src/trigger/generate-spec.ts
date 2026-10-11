@@ -5,6 +5,7 @@ import { orm } from "../prisma/db";
 import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/liveblocks";
 import { AllProvidersFailedError, RunCancelledError, describeProviderFailure, generateSpecMarkdown, readFlow, recordRunResult, toAiMeta } from "../utils/ai";
 import { createSpecRecord } from "../services/spec.service";
+import { globalLimit, projectLimit } from "./limits";
 
 export const generateSpecPayloadSchema = z.object({
     projectId: z.string().uuid(),
@@ -22,9 +23,11 @@ export type GenerateSpecPayload = z.infer<typeof generateSpecPayloadSchema>;
 export const generateSpecTask = schemaTask({
     id: "generate-spec",
     schema: generateSpecPayloadSchema,
+    concurrency: [projectLimit, globalLimit],
     retry: { maxAttempts: 1 },
     run: async ({ projectId, chatHistory }, { ctx, signal }) => {
         const runId = ctx.run.id;
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
 
         const project = await orm.Project.where({ id: projectId }).select("id", "name").first();
         if (!project) {
@@ -62,19 +65,19 @@ export const generateSpecTask = schemaTask({
                 `I wrote a technical spec from the canvas: ${spec.fileName}. Open the Specs tab to preview or download it.`,
                 { runId, meta: aiMeta }
             );
-            await recordRunResult(runId, { status: "completed", meta, usage });
+            await recordRunResult(runId, { status: "completed", meta, usage, queuedMs });
 
             return { status: "completed" as const, specId: spec.id };
         } catch (error) {
             if (error instanceof RunCancelledError) {
                 await publishStatus(projectId, { kind: "spec", runId, step: "error", text: "Stopped." });
-                await recordRunResult(runId, { status: "cancelled" });
+                await recordRunResult(runId, { status: "cancelled", queuedMs });
                 return { status: "cancelled" as const };
             }
             if (error instanceof AllProvidersFailedError) {
                 await publishStatus(projectId, { kind: "spec", runId, step: "error", text: "Spec generation failed." });
                 await publishAssistantMessage(projectId, describeProviderFailure(error), { runId });
-                await recordRunResult(runId, { status: "failed" });
+                await recordRunResult(runId, { status: "failed", queuedMs });
                 return { status: "failed" as const, reason: "providers" };
             }
             throw error;
@@ -83,7 +86,8 @@ export const generateSpecTask = schemaTask({
         }
     },
     onFailure: async ({ payload, ctx }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
         await publishStatus(payload.projectId, { kind: "spec", runId: ctx.run.id, step: "error", text: "Spec generation failed." });
-        await recordRunResult(ctx.run.id, { status: "failed" });
+        await recordRunResult(ctx.run.id, { status: "failed", queuedMs });
     },
 });

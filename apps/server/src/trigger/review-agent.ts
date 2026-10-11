@@ -3,6 +3,7 @@ import { z } from "zod";
 import { orm } from "../prisma/db";
 import { publishAssistantMessage, publishReview, publishStatus, setAiPresence } from "../utils/liveblocks";
 import { AllProvidersFailedError, RunCancelledError, describeProviderFailure, generateReview, readFlow, recordRunResult, toAiMeta } from "../utils/ai";
+import { globalLimit, projectLimit } from "./limits";
 
 export const reviewAgentPayloadSchema = z.object({
     projectId: z.string().uuid(),
@@ -20,9 +21,11 @@ const MIN_NODES_TO_REVIEW = 2;
 export const reviewAgentTask = schemaTask({
     id: "review-agent",
     schema: reviewAgentPayloadSchema,
+    concurrency: [projectLimit, globalLimit],
     retry: { maxAttempts: 1 },
     run: async ({ projectId }, { ctx, signal }) => {
         const runId = ctx.run.id;
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
 
         const project = await orm.Project.where({ id: projectId }).select("id").first();
         if (!project) {
@@ -39,7 +42,7 @@ export const reviewAgentTask = schemaTask({
             if (graph.nodes.length < MIN_NODES_TO_REVIEW) {
                 await publishAssistantMessage(projectId, "There is not enough on the canvas to review yet. Add a few components, or ask me to design something, and then run the review.", { runId });
                 await publishStatus(projectId, { kind: "review", runId, step: "complete", text: "Nothing to review yet." });
-                await recordRunResult(runId, { status: "completed" });
+                await recordRunResult(runId, { status: "completed", queuedMs });
                 return { status: "completed" as const, recommendations: 0 };
             }
 
@@ -52,21 +55,21 @@ export const reviewAgentTask = schemaTask({
             await publishReview(projectId, { type: "review", runId, summary, score, recommendations, meta: aiMeta });
             await publishAssistantMessage(projectId, `I reviewed the architecture and have ${recommendations.length} recommendation${recommendations.length === 1 ? "" : "s"}. Open the Review tab to see them and apply fixes.`, { runId, meta: aiMeta });
             await publishStatus(projectId, { kind: "review", runId, step: "complete", text: summary, meta: aiMeta });
-            await recordRunResult(runId, { status: "completed", meta, usage });
+            await recordRunResult(runId, { status: "completed", meta, usage, queuedMs });
 
             metadata.set("step", "complete");
             return { status: "completed" as const, recommendations: recommendations.length };
         } catch (error) {
             if (error instanceof RunCancelledError) {
                 await publishStatus(projectId, { kind: "review", runId, step: "error", text: "Stopped." });
-                await recordRunResult(runId, { status: "cancelled" });
+                await recordRunResult(runId, { status: "cancelled", queuedMs });
                 return { status: "cancelled" as const };
             }
             if (error instanceof AllProvidersFailedError) {
                 logger.error("All AI providers failed", { attempts: error.attempts });
                 await publishStatus(projectId, { kind: "review", runId, step: "error", text: "Review failed." });
                 await publishAssistantMessage(projectId, describeProviderFailure(error), { runId });
-                await recordRunResult(runId, { status: "failed" });
+                await recordRunResult(runId, { status: "failed", queuedMs });
                 return { status: "failed" as const, reason: "providers" };
             }
             throw error;
@@ -75,12 +78,14 @@ export const reviewAgentTask = schemaTask({
         }
     },
     onFailure: async ({ payload, ctx }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
         await publishStatus(payload.projectId, { kind: "review", runId: ctx.run.id, step: "error", text: "Review failed." });
-        await recordRunResult(ctx.run.id, { status: "failed" });
+        await recordRunResult(ctx.run.id, { status: "failed", queuedMs });
     },
     onCancel: async ({ payload, ctx }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
         await publishStatus(payload.projectId, { kind: "review", runId: ctx.run.id, step: "error", text: "Stopped." });
         await setAiPresence(payload.projectId, { cursor: null, thinking: false });
-        await recordRunResult(ctx.run.id, { status: "cancelled" });
+        await recordRunResult(ctx.run.id, { status: "cancelled", queuedMs });
     },
 });

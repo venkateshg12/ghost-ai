@@ -5,6 +5,7 @@ import { generateImagePlan, recordRunResult } from "../utils/ai";
 import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/liveblocks";
 import { readBytes, removeObject } from "../utils/storage";
 import { executeDesignFlow } from "./designFlow";
+import { globalLimit, projectLimit } from "./limits";
 
 export const imageAgentPayloadSchema = z.object({
     projectId: z.string().uuid(),
@@ -24,14 +25,17 @@ export type ImageAgentPayload = z.infer<typeof imageAgentPayloadSchema>;
 export const imageAgentTask = schemaTask({
     id: "image-agent",
     schema: imageAgentPayloadSchema,
+    concurrency: [projectLimit, globalLimit],
     retry: { maxAttempts: 1 },
-    run: async ({ projectId, prompt, imagePath, mediaType }, { ctx, signal }) =>
-        executeDesignFlow({
+    run: async ({ projectId, prompt, imagePath, mediaType }, { ctx, signal }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
+        return executeDesignFlow({
             projectId,
             runId: ctx.run.id,
             kind: "image",
             startText: "Ghost AI is looking at your sketch…",
             signal,
+            queuedMs,
             generate: async (graph) => {
                 const bytes = await readBytes(imagePath);
                 if (!bytes) throw new Error("The uploaded image is no longer available");
@@ -41,17 +45,20 @@ export const imageAgentTask = schemaTask({
                 removeObject(imagePath).catch((error) => {
                     logger.warn("Could not delete the uploaded image", { error: String(error) });
                 }),
-        }),
+        });
+    },
     onFailure: async ({ payload, ctx }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
         await publishStatus(payload.projectId, { kind: "image", runId: ctx.run.id, step: "error", text: "Couldn't read the sketch." });
         await publishAssistantMessage(payload.projectId, "Sorry — something went wrong while reading that image. Please try again.", { runId: ctx.run.id });
-        await recordRunResult(ctx.run.id, { status: "failed" });
+        await recordRunResult(ctx.run.id, { status: "failed", queuedMs });
         await removeObject(payload.imagePath).catch(() => undefined);
     },
     onCancel: async ({ payload, ctx }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
         await publishStatus(payload.projectId, { kind: "image", runId: ctx.run.id, step: "error", text: "Stopped." });
         await setAiPresence(payload.projectId, { cursor: null, thinking: false });
-        await recordRunResult(ctx.run.id, { status: "cancelled" });
+        await recordRunResult(ctx.run.id, { status: "cancelled", queuedMs });
         await removeObject(payload.imagePath).catch(() => undefined);
     },
 });

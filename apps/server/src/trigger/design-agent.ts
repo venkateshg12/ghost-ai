@@ -3,6 +3,7 @@ import { z } from "zod";
 import { generateDesignPlan, recordRunResult } from "../utils/ai";
 import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/liveblocks";
 import { executeDesignFlow } from "./designFlow";
+import { globalLimit, projectLimit } from "./limits";
 
 export const designAgentPayloadSchema = z.object({
     projectId: z.string().uuid(),
@@ -21,31 +22,42 @@ export type DesignAgentPayload = z.infer<typeof designAgentPayloadSchema>;
 export const designAgentTask = schemaTask({
     id: "design-agent",
     schema: designAgentPayloadSchema,
+    concurrency: [projectLimit, globalLimit],
     // Provider retries and fallback happen inside the run; a task-level retry would repeat a long wait.
     retry: { maxAttempts: 1 },
-    run: async ({ projectId, prompt, focusNodeIds }, { ctx, signal }) =>
-        executeDesignFlow({
+    run: async ({ projectId, prompt, focusNodeIds }, { ctx, signal }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
+        return executeDesignFlow({
             projectId,
             runId: ctx.run.id,
             kind: "design",
             startText: "Ghost AI is reading the canvas…",
             signal,
+            queuedMs,
             generate: (graph, onProgress) => {
                 // Only ids that exist in the room count: the client's selection is a hint, never trusted.
                 const present = new Set(graph.nodes.map((node) => node.id));
-                return generateDesignPlan(prompt, graph, { focusNodeIds: (focusNodeIds ?? []).filter((id) => present.has(id)), signal, onProgress });
+                return generateDesignPlan(prompt, graph, {
+                    projectId,
+                    focusNodeIds: (focusNodeIds ?? []).filter((id) => present.has(id)),
+                    signal,
+                    onProgress,
+                });
             },
-        }),
+        });
+    },
     // An unexpected error (not a provider failure, which the flow reports itself).
     onFailure: async ({ payload, ctx }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
         await publishStatus(payload.projectId, { kind: "design", runId: ctx.run.id, step: "error", text: "Design generation failed." });
         await publishAssistantMessage(payload.projectId, "Sorry — something went wrong while drawing that. Please try again.", { runId: ctx.run.id });
-        await recordRunResult(ctx.run.id, { status: "failed" });
+        await recordRunResult(ctx.run.id, { status: "failed", queuedMs });
     },
     // The user pressed Stop and the run was cancelled from outside, before it could clean up itself.
     onCancel: async ({ payload, ctx }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
         await publishStatus(payload.projectId, { kind: "design", runId: ctx.run.id, step: "error", text: "Stopped." });
         await setAiPresence(payload.projectId, { cursor: null, thinking: false });
-        await recordRunResult(ctx.run.id, { status: "cancelled" });
+        await recordRunResult(ctx.run.id, { status: "cancelled", queuedMs });
     },
 });

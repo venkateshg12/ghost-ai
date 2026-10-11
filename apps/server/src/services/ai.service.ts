@@ -54,8 +54,8 @@ export const startDesignRunService = async (userId: string, data: DesignRequestS
     // Type-only import of the task: the API process never loads task code, only triggers it by id.
     const isAsk = data.mode === "ask";
     const handle = isAsk
-        ? await tasks.trigger<typeof chatAgentTask>("chat-agent", payload, { tags: tagsFor(project.id, userId) })
-        : await tasks.trigger<typeof designAgentTask>("design-agent", payload, { tags: tagsFor(project.id, userId) });
+        ? await tasks.trigger<typeof chatAgentTask>("chat-agent", payload, { tags: tagsFor(project.id, userId), concurrencyKey: project.id })
+        : await tasks.trigger<typeof designAgentTask>("design-agent", payload, { tags: tagsFor(project.id, userId), concurrencyKey: project.id });
     const kind: AiRunKind = isAsk ? "chat" : "design";
 
     await recordRun(handle.id, kind, project.id, userId, data.prompt);
@@ -63,7 +63,7 @@ export const startDesignRunService = async (userId: string, data: DesignRequestS
         kind,
         runId: handle.id,
         step: "queued",
-        text: "Ghost AI is getting ready…",
+        text: "Waiting for the previous AI run in this project…",
     });
 
     return { runId: handle.id, kind, publicAccessToken: handle.publicAccessToken };
@@ -76,11 +76,11 @@ export const startSpecRunService = async (userId: string, data: SpecRequestSchem
     const handle = await tasks.trigger<typeof generateSpecTask>(
         "generate-spec",
         { projectId: project.id, userId, chatHistory: data.chatHistory },
-        { tags: tagsFor(project.id, userId) }
+        { tags: tagsFor(project.id, userId), concurrencyKey: project.id }
     );
 
     await recordRun(handle.id, "spec", project.id, userId);
-    await publishStatus(project.id, { kind: "spec", runId: handle.id, step: "queued", text: "Queued technical spec generation…" });
+    await publishStatus(project.id, { kind: "spec", runId: handle.id, step: "queued", text: "Waiting for the previous AI run in this project…" });
 
     return { runId: handle.id, kind: "spec", publicAccessToken: handle.publicAccessToken };
 };
@@ -172,6 +172,7 @@ export const getUsageService = async (userId: string, projectId: string): Promis
         cancelled: finished.filter((row) => row.status === "cancelled").length,
         fellBack: rows.filter((row) => row.fellBack).length,
         avgLatencyMs: average(rows.flatMap((row) => (row.latencyMs !== null && row.latencyMs !== undefined ? [row.latencyMs] : []))),
+        avgQueuedMs: average(rows.flatMap((row) => (row.queuedMs !== null && row.queuedMs !== undefined ? [row.queuedMs] : []))),
         inputTokens: rows.reduce((sum, row) => sum + (row.inputTokens ?? 0), 0),
         outputTokens: rows.reduce((sum, row) => sum + (row.outputTokens ?? 0), 0),
         byProvider: [...providers.values()]
@@ -194,11 +195,11 @@ export const startReviewRunService = async (userId: string, data: ReviewRequestS
     const handle = await tasks.trigger<typeof reviewAgentTask>(
         "review-agent",
         { projectId: project.id, userId },
-        { tags: tagsFor(project.id, userId) }
+        { tags: tagsFor(project.id, userId), concurrencyKey: project.id }
     );
 
     await recordRun(handle.id, "review", project.id, userId, "Architecture review");
-    await publishStatus(project.id, { kind: "review", runId: handle.id, step: "queued", text: "Queued the architecture review…" });
+    await publishStatus(project.id, { kind: "review", runId: handle.id, step: "queued", text: "Waiting for the previous AI run in this project…" });
 
     return { runId: handle.id, kind: "review", publicAccessToken: handle.publicAccessToken };
 };
@@ -272,7 +273,7 @@ export const startImageDesignRunService = async (userId: string, query: ImageDes
         handle = await tasks.trigger<typeof imageAgentTask>(
             "image-agent",
             { projectId: project.id, userId, prompt, imagePath, mediaType: image.mediaType },
-            { tags: tagsFor(project.id, userId) }
+            { tags: tagsFor(project.id, userId), concurrencyKey: project.id }
         );
     } catch (error) {
         await removeObject(imagePath).catch(() => undefined);
@@ -280,7 +281,7 @@ export const startImageDesignRunService = async (userId: string, query: ImageDes
     }
 
     await recordRun(handle.id, "image", project.id, userId, prompt);
-    await publishStatus(project.id, { kind: "image", runId: handle.id, step: "queued", text: "Ghost AI is getting ready…" });
+    await publishStatus(project.id, { kind: "image", runId: handle.id, step: "queued", text: "Waiting for the previous AI run in this project…" });
 
     return { runId: handle.id, kind: "image", publicAccessToken: handle.publicAccessToken };
 };

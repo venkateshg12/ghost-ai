@@ -3,6 +3,7 @@ import { z } from "zod";
 import { analyzeGraph, suggestPrompts } from "@repo/types";
 import { orm } from "../prisma/db";
 import { publishAssistantMessage, publishStatus, readChatHistory, setAiPresence, updateAssistantMessage } from "../utils/liveblocks";
+import { globalLimit, projectLimit } from "./limits";
 import {
     AllProvidersFailedError,
     RunCancelledError,
@@ -34,9 +35,11 @@ const STREAM_FLUSH_MS = 300;
 export const chatAgentTask = schemaTask({
     id: "chat-agent",
     schema: chatAgentPayloadSchema,
+    concurrency: [projectLimit, globalLimit],
     retry: { maxAttempts: 1 },
     run: async ({ projectId, prompt, focusNodeIds }, { ctx, signal }) => {
         const runId = ctx.run.id;
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
 
         const project = await orm.Project.where({ id: projectId }).select("id").first();
         if (!project) {
@@ -101,7 +104,7 @@ export const chatAgentTask = schemaTask({
             else await publishAssistantMessage(projectId, result.text, extras);
 
             await publishStatus(projectId, { kind: "chat", runId, step: "complete", text: "Answered.", meta: aiMeta });
-            await recordRunResult(runId, { status: "completed", meta: result.meta, usage: result.usage });
+            await recordRunResult(runId, { status: "completed", meta: result.meta, usage: result.usage, queuedMs });
             metadata.set("step", "complete");
             return { status: "completed" as const };
         } catch (error) {
@@ -114,14 +117,14 @@ export const chatAgentTask = schemaTask({
             if (error instanceof RunCancelledError) {
                 await settle(latest ? `${latest}\n\n_(stopped)_` : "_(stopped)_");
                 await publishStatus(projectId, { kind: "chat", runId, step: "error", text: "Stopped." });
-                await recordRunResult(runId, { status: "cancelled" });
+                await recordRunResult(runId, { status: "cancelled", queuedMs });
                 return { status: "cancelled" as const };
             }
             if (error instanceof AllProvidersFailedError) {
                 logger.error("All AI providers failed", { attempts: error.attempts });
                 await settle(describeProviderFailure(error));
                 await publishStatus(projectId, { kind: "chat", runId, step: "error", text: "Couldn't answer." });
-                await recordRunResult(runId, { status: "failed" });
+                await recordRunResult(runId, { status: "failed", queuedMs });
                 return { status: "failed" as const, reason: "providers" };
             }
             await settle("Sorry — something went wrong while answering. Please try again.");
@@ -131,12 +134,14 @@ export const chatAgentTask = schemaTask({
         }
     },
     onFailure: async ({ payload, ctx }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
         await publishStatus(payload.projectId, { kind: "design", runId: ctx.run.id, step: "error", text: "Couldn't answer." });
-        await recordRunResult(ctx.run.id, { status: "failed" });
+        await recordRunResult(ctx.run.id, { status: "failed", queuedMs });
     },
     onCancel: async ({ payload, ctx }) => {
+        const queuedMs = Math.max(0, (ctx.run.startedAt?.getTime() ?? Date.now()) - (ctx.run.createdAt?.getTime() ?? Date.now()));
         await publishStatus(payload.projectId, { kind: "design", runId: ctx.run.id, step: "error", text: "Stopped." });
         await setAiPresence(payload.projectId, { cursor: null, thinking: false });
-        await recordRunResult(ctx.run.id, { status: "cancelled" });
+        await recordRunResult(ctx.run.id, { status: "cancelled", queuedMs });
     },
 });
