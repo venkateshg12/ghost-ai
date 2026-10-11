@@ -606,6 +606,13 @@
                   "kind": "scalar"
                 }
               },
+              "queuedMs": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
               "runId": {
                 "nullable": false,
                 "type": {
@@ -706,6 +713,9 @@
                 },
                 "provider": {
                   "column": "provider"
+                },
+                "queuedMs": {
+                  "column": "queuedMs"
                 },
                 "runId": {
                   "column": "runId"
@@ -1414,6 +1424,11 @@
                   "nativeType": "text",
                   "nullable": true
                 },
+                "queuedMs": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
                 "runId": {
                   "codecId": "pg/text@1",
                   "nativeType": "text",
@@ -1788,7 +1803,7 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "a97bd5e98e8295356a6a9795cbd9e00dcc2c77bad70405cc84222c718f04c522"
+    "storageHash": "f22af4680090db0d2c89b5ff1ff275abb4dbac3e8d9e50514679ecb98a20a77b"
   },
   "execution": {
     "executionHash": "2281ecc118f5f688e22b52f6c4a9e86266a8818ec3b63a0ae1da0bd56c1aa402",

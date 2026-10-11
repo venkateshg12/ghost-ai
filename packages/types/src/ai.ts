@@ -51,6 +51,7 @@ export const aiMetaSchema = z.object({
     latencyMs: z.number(),
     /** True when the first-choice provider did not produce this result. */
     fellBack: z.boolean(),
+    cached: z.boolean().optional(),
     inputTokens: z.number().optional(),
     outputTokens: z.number().optional(),
 });
@@ -205,6 +206,7 @@ export interface AiUsageSummary {
     /** Runs answered by a provider other than the first choice. */
     fellBack: number;
     avgLatencyMs: number | null;
+    avgQueuedMs: number | null;
     inputTokens: number;
     outputTokens: number;
     byProvider: { provider: string; model: string; runs: number; avgLatencyMs: number | null }[];

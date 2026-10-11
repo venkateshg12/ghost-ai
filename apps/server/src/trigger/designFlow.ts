@@ -28,6 +28,7 @@ interface DesignFlowOptions {
     /** What the status line says while the model is working. */
     startText: string;
     signal?: AbortSignal;
+    queuedMs?: number;
     /** Produces the edit plan. Everything else (apply, undo snapshot, reporting) is shared. `onProgress` is called as the plan is written. */
     generate: (graph: FlowGraph, onProgress: (progress: PlanProgress) => void) => Promise<DesignResult>;
     /** Runs when the flow ends for any reason, e.g. to delete an uploaded image. */
@@ -46,7 +47,7 @@ const HEARTBEAT_INTERVAL_MS = 3_000;
   report to the room and to the run record. Failures that are expected (providers down, a plan that is not
   good enough, the user pressing Stop) are reported and end the run normally; anything else is thrown.
  */
-export const executeDesignFlow = async ({ projectId, runId, kind, startText, signal, generate, cleanup }: DesignFlowOptions) => {
+export const executeDesignFlow = async ({ projectId, runId, kind, startText, signal, queuedMs, generate, cleanup }: DesignFlowOptions) => {
     // The project may have been deleted while the run waited in the queue.
     const project = await orm.Project.where({ id: projectId }).select("id").first();
     if (!project) {
@@ -136,27 +137,27 @@ export const executeDesignFlow = async ({ projectId, runId, kind, startText, sig
             canUndo: Boolean(snapshotPath) && applied > 0,
         });
         await publishStatus(projectId, { kind, runId, step: "complete", text: plan.summary, meta: aiMeta });
-        await recordRunResult(runId, { status: "completed", meta, usage, snapshotPath });
+        await recordRunResult(runId, { status: "completed", meta, usage, snapshotPath, queuedMs });
 
         metadata.set("step", "complete");
         return { status: "completed" as const, operations: operations.length, applied };
     } catch (error) {
         if (error instanceof RunCancelledError) {
             await publishStatus(projectId, { kind, runId, step: "error", text: "Stopped." });
-            await recordRunResult(runId, { status: "cancelled" });
+            await recordRunResult(runId, { status: "cancelled", queuedMs });
             return { status: "cancelled" as const };
         }
         if (error instanceof AllProvidersFailedError) {
             logger.error("All AI providers failed", { attempts: error.attempts });
             await publishStatus(projectId, { kind, runId, step: "error", text: kind === "image" ? "Couldn't read the sketch." : "Design generation failed." });
             await publishAssistantMessage(projectId, describeProviderFailure(error), { runId });
-            await recordRunResult(runId, { status: "failed" });
+            await recordRunResult(runId, { status: "failed", queuedMs });
             return { status: "failed" as const, reason: "providers" };
         }
         if (error instanceof NoVisionProviderError || error instanceof PlanQualityError) {
             await publishStatus(projectId, { kind, runId, step: "error", text: "Couldn't read the sketch." });
             await publishAssistantMessage(projectId, error instanceof NoVisionProviderError ? "Reading images needs a Gemini API key, which this server doesn't have configured." : "I couldn't recognise enough of an architecture in that image. Try a clearer, closer photo with readable labels.", { runId });
-            await recordRunResult(runId, { status: "failed" });
+            await recordRunResult(runId, { status: "failed", queuedMs });
             return { status: "failed" as const, reason: "image" };
         }
         throw error;

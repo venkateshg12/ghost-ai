@@ -34,7 +34,7 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'a97bd5e98e8295356a6a9795cbd9e00dcc2c77bad70405cc84222c718f04c522'>;
+  StorageHashBase<'f22af4680090db0d2c89b5ff1ff275abb4dbac3e8d9e50514679ecb98a20a77b'>;
 export type ExecutionHash =
   ExecutionHashBase<'2281ecc118f5f688e22b52f6c4a9e86266a8818ec3b63a0ae1da0bd56c1aa402'>;
 export type ProfileHash =
@@ -285,6 +285,7 @@ export type FieldOutputTypes = {
       readonly provider: CodecTypes['pg/text@1']['output'] | null;
       readonly model: CodecTypes['pg/text@1']['output'] | null;
       readonly latencyMs: CodecTypes['pg/int4@1']['output'] | null;
+      readonly queuedMs: CodecTypes['pg/int4@1']['output'] | null;
       readonly inputTokens: CodecTypes['pg/int4@1']['output'] | null;
       readonly outputTokens: CodecTypes['pg/int4@1']['output'] | null;
       readonly fellBack: CodecTypes['pg/bool@1']['output'];
@@ -361,6 +362,7 @@ export type FieldInputTypes = {
       readonly provider: CodecTypes['pg/text@1']['input'] | null;
       readonly model: CodecTypes['pg/text@1']['input'] | null;
       readonly latencyMs: CodecTypes['pg/int4@1']['input'] | null;
+      readonly queuedMs: CodecTypes['pg/int4@1']['input'] | null;
       readonly inputTokens: CodecTypes['pg/int4@1']['input'] | null;
       readonly outputTokens: CodecTypes['pg/int4@1']['input'] | null;
       readonly fellBack: CodecTypes['pg/bool@1']['input'];
@@ -440,6 +442,7 @@ export type StorageColumnTypes = {
       readonly projectId: CodecTypes['pg/uuid@1']['output'];
       readonly prompt: CodecTypes['pg/text@1']['output'] | null;
       readonly provider: CodecTypes['pg/text@1']['output'] | null;
+      readonly queuedMs: CodecTypes['pg/int4@1']['output'] | null;
       readonly runId: CodecTypes['pg/text@1']['output'];
       readonly snapshotPath: CodecTypes['pg/text@1']['output'] | null;
       readonly status: CodecTypes['pg/text@1']['output'] | null;
@@ -516,6 +519,7 @@ export type StorageColumnInputTypes = {
       readonly projectId: CodecTypes['pg/uuid@1']['input'];
       readonly prompt: CodecTypes['pg/text@1']['input'] | null;
       readonly provider: CodecTypes['pg/text@1']['input'] | null;
+      readonly queuedMs: CodecTypes['pg/int4@1']['input'] | null;
       readonly runId: CodecTypes['pg/text@1']['input'];
       readonly snapshotPath: CodecTypes['pg/text@1']['input'] | null;
       readonly status: CodecTypes['pg/text@1']['input'] | null;
@@ -623,6 +627,7 @@ export namespace Models {
     provider: CodecTypes['pg/text@1']['output'] | null;
     model: CodecTypes['pg/text@1']['output'] | null;
     latencyMs: CodecTypes['pg/int4@1']['output'] | null;
+    queuedMs: CodecTypes['pg/int4@1']['output'] | null;
     inputTokens: CodecTypes['pg/int4@1']['output'] | null;
     outputTokens: CodecTypes['pg/int4@1']['output'] | null;
     fellBack: CodecTypes['pg/bool@1']['output'];
@@ -990,6 +995,11 @@ type ContractBase = Omit<
                   readonly nullable: true;
                 };
                 readonly latencyMs: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly queuedMs: {
                   readonly nativeType: 'int4';
                   readonly codecId: 'pg/int4@1';
                   readonly nullable: true;
@@ -1587,6 +1597,10 @@ type ContractBase = Omit<
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
               };
+              readonly queuedMs: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
               readonly inputTokens: {
                 readonly nullable: true;
                 readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
@@ -1655,6 +1669,7 @@ type ContractBase = Omit<
                 readonly provider: { readonly column: 'provider' };
                 readonly model: { readonly column: 'model' };
                 readonly latencyMs: { readonly column: 'latencyMs' };
+                readonly queuedMs: { readonly column: 'queuedMs' };
                 readonly inputTokens: { readonly column: 'inputTokens' };
                 readonly outputTokens: { readonly column: 'outputTokens' };
                 readonly fellBack: { readonly column: 'fellBack' };

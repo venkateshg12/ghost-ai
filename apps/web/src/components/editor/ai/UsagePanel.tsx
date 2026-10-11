@@ -59,6 +59,7 @@ const UsagePanel = ({ projectId }: { projectId: string }) => {
             <>
               <div className="grid grid-cols-2 gap-2">
                 <Stat label="Avg latency" value={seconds(usage.avgLatencyMs)} />
+                <Stat label="Avg queue wait" value={seconds(usage.avgQueuedMs)} />
                 <Stat
                   label="Backup used"
                   value={`${usage.fellBack}/${usage.runs}`}

@@ -10,6 +10,7 @@ interface RunResultFields {
     meta?: RunMeta;
     usage?: TokenUsage;
     snapshotPath?: string | null;
+    queuedMs?: number;
 }
 
 /*
@@ -17,12 +18,13 @@ interface RunResultFields {
   and where the undo snapshot lives. Observability must never break the run it describes, so a failed
   write is logged and swallowed.
  */
-export const recordRunResult = async (runId: string, { status, meta, usage, snapshotPath }: RunResultFields) => {
+export const recordRunResult = async (runId: string, { status, meta, usage, snapshotPath, queuedMs }: RunResultFields) => {
     try {
         await orm.TaskRun.where({ runId }).update({
             status,
             completedAt: new Date().toISOString(),
             ...(meta ? { provider: meta.provider, model: meta.modelId, latencyMs: Math.round(meta.latencyMs), fellBack: meta.fellBack } : {}),
+            ...(queuedMs !== undefined ? { queuedMs: Math.round(queuedMs) } : {}),
             ...(usage?.inputTokens !== undefined ? { inputTokens: usage.inputTokens } : {}),
             ...(usage?.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
             ...(snapshotPath ? { snapshotPath } : {}),
@@ -39,6 +41,7 @@ export const toAiMeta = (meta: RunMeta, usage: TokenUsage = {}): AiMeta => ({
     label: meta.label,
     latencyMs: Math.round(meta.latencyMs),
     fellBack: meta.fellBack,
+    ...(meta.cached !== undefined ? { cached: meta.cached } : {}),
     ...(usage.inputTokens !== undefined ? { inputTokens: usage.inputTokens } : {}),
     ...(usage.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
 });

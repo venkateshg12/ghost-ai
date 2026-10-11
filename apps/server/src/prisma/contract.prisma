@@ -135,6 +135,7 @@ model TaskRun {
     provider String?
     model String?
     latencyMs Int?
+    queuedMs Int?
     inputTokens Int?
     outputTokens Int?
     fellBack Boolean @default(false)
