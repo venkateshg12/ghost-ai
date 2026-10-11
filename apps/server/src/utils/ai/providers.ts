@@ -12,8 +12,12 @@ import {
     NVIDIA_API_KEY,
     NVIDIA_BASE_URL,
     NVIDIA_MODEL,
+    NVIDIA_RPM,
 } from "../../constants/env";
-import type { Attempt } from "./runWithFallback";
+import type { Attempt, AttemptRecord } from "./runWithFallback";
+import { getAiRedis } from "../redis";
+import { takeSlot } from "./rateLimit";
+import { isOpen, recordFailure, recordSuccess } from "./circuitBreaker";
 
 export type ProviderId = "nvidia" | "google";
 export type ProviderOptions = Record<string, Record<string, JSONValue>>;
@@ -104,6 +108,39 @@ export const getProviderChain = (): ProviderModel[] => {
     return chain;
 };
 
+/** Drops providers whose circuit is open, but NEVER drops the last remaining provider. */
+export const filterOpenCircuits = async (chain: ProviderModel[]): Promise<ProviderModel[]> => {
+    if (chain.length <= 1) return chain;
+    try {
+        const redis = getAiRedis();
+        const checks = await Promise.all(chain.map((p) => isOpen(redis, p.provider)));
+        const available = chain.filter((_, index) => !checks[index]);
+        return available.length > 0 ? available : chain;
+    } catch {
+        return chain;
+    }
+};
+
+/** Records circuit breaker outcomes from run attempts. */
+export const recordCircuitBreakerAttempts = async (attempts: AttemptRecord[]): Promise<void> => {
+    try {
+        const redis = getAiRedis();
+        for (const attempt of attempts) {
+            if (attempt.ok) {
+                await recordSuccess(redis, attempt.provider);
+            } else {
+                // Do not count PlanQualityError / validation or cancellations as provider outages
+                const err = (attempt.error ?? "").toLowerCase();
+                if (!err.includes("not good enough") && !err.includes("quality") && !err.includes("thin")) {
+                    await recordFailure(redis, attempt.provider);
+                }
+            }
+        }
+    } catch {
+        // Fail open
+    }
+};
+
 /** Turns one provider-specific call into the attempt list `runWithFallback` walks. */
 export const attemptsFor = <T>(
     call: (provider: ProviderModel, signal: AbortSignal) => Promise<T>,
@@ -115,7 +152,19 @@ export const attemptsFor = <T>(
         modelId: provider.modelId,
         label: provider.label,
         timeoutMs: provider.timeoutMs * timeoutScale,
-        run: (signal) => call(provider, signal),
+        run: async (signal) => {
+            if (provider.provider === "nvidia") {
+                const redis = getAiRedis();
+                const wait = await takeSlot(redis, "nvidia", Number(NVIDIA_RPM));
+                if (wait > 0) {
+                    throw Object.assign(new Error("shared limiter"), {
+                        statusCode: 429,
+                        responseHeaders: { "retry-after": String(Math.ceil(wait / 1000)) },
+                    });
+                }
+            }
+            return call(provider, signal);
+        },
     }));
 
 /** The providers that can read an image: sketches skip NVIDIA's text-only models. */
