@@ -1,7 +1,7 @@
 import { generateText } from "ai";
 import type { ChatHistoryItem } from "@repo/types";
-import { attemptsFor, getProviderChain } from "./providers";
-import { runWithFallback, type RunMeta } from "./runWithFallback";
+import { attemptsFor, filterOpenCircuits, getProviderChain, recordCircuitBreakerAttempts } from "./providers";
+import { AllProvidersFailedError, runWithFallback, type RunMeta } from "./runWithFallback";
 import type { TokenUsage } from "./design";
 import { describeGraph, type FlowGraph } from "./graph";
 
@@ -49,38 +49,53 @@ const MIN_SPEC_CHARS = 400;
 const SPEC_TIMEOUT_SCALE = 2;
 
 export const generateSpecMarkdown = async (input: SpecInput, options: { signal?: AbortSignal } = {}): Promise<SpecResult> => {
-    const chain = getProviderChain();
-    if (chain.length === 0) return { markdown: fallbackSpecMarkdown(input), meta: OFFLINE_META, usage: {} };
+    const rawChain = getProviderChain();
+    if (rawChain.length === 0) return { markdown: fallbackSpecMarkdown(input), meta: OFFLINE_META, usage: {} };
+
+    const chain = await filterOpenCircuits(rawChain);
 
     const conversation = input.chatHistory.length
         ? input.chatHistory.map((item) => `${item.role}: ${item.content}`).join("\n")
         : "(no conversation)";
 
-    const { value, meta } = await runWithFallback(
-        attemptsFor(
-            async (provider, signal) => {
-                const { text, usage } = await generateText({
-                    model: provider.model,
-                    system: SYSTEM_PROMPT,
-                    prompt: `Project: ${input.projectName}\n\n${describeGraph(input.graph)}\n\nConversation:\n${conversation}`,
-                    providerOptions: provider.providerOptions,
-                    abortSignal: signal,
-                    maxRetries: 0,
-                    temperature: 0.3,
-                    maxOutputTokens: 8000,
-                });
-                return { markdown: text.trim(), usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
-            },
-            chain,
-            SPEC_TIMEOUT_SCALE
-        ),
-        {
-            signal: options.signal,
-            validate: ({ markdown }) => {
-                if (markdown.length < MIN_SPEC_CHARS) throw new Error("The spec came back too short");
-            },
+    let value: { markdown: string; usage: TokenUsage };
+    let meta: RunMeta;
+
+    try {
+        const result = await runWithFallback(
+            attemptsFor(
+                async (provider, signal) => {
+                    const { text, usage } = await generateText({
+                        model: provider.model,
+                        system: SYSTEM_PROMPT,
+                        prompt: `Project: ${input.projectName}\n\n${describeGraph(input.graph)}\n\nConversation:\n${conversation}`,
+                        providerOptions: provider.providerOptions,
+                        abortSignal: signal,
+                        maxRetries: 0,
+                        temperature: 0.3,
+                        maxOutputTokens: 8000,
+                    });
+                    return { markdown: text.trim(), usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
+                },
+                chain,
+                SPEC_TIMEOUT_SCALE
+            ),
+            {
+                signal: options.signal,
+                validate: ({ markdown }) => {
+                    if (markdown.length < MIN_SPEC_CHARS) throw new Error("The spec came back too short");
+                },
+            }
+        );
+        value = result.value;
+        meta = result.meta;
+        void recordCircuitBreakerAttempts(meta.attempts);
+    } catch (error) {
+        if (error instanceof AllProvidersFailedError) {
+            void recordCircuitBreakerAttempts(error.attempts);
         }
-    );
+        throw error;
+    }
 
     return { markdown: value.markdown, meta, usage: value.usage };
 };

@@ -1,7 +1,7 @@
 import { streamText } from "ai";
 import { analyzeGraph, type Analysis } from "@repo/types";
-import { attemptsFor, getProviderChain } from "./providers";
-import { runWithFallback, type RunMeta } from "./runWithFallback";
+import { attemptsFor, filterOpenCircuits, getProviderChain, recordCircuitBreakerAttempts } from "./providers";
+import { AllProvidersFailedError, runWithFallback, type RunMeta } from "./runWithFallback";
 import type { TokenUsage } from "./design";
 import { describeGraph, toGraphInput, type FlowGraph } from "./graph";
 import type { HistoryMessage } from "../liveblocks";
@@ -65,8 +65,8 @@ const OFFLINE_META: RunMeta = { provider: "offline", modelId: "deterministic", l
   scratch (text resets), so a reader never sees two answers glued together.
  */
 export const streamChatAnswer = async ({ graph, history, prompt, focusNodeIds = [], onText, signal }: ChatStreamOptions): Promise<ChatResult> => {
-    const chain = getProviderChain();
-    if (chain.length === 0) {
+    const rawChain = getProviderChain();
+    if (rawChain.length === 0) {
         const analysis = analyzeGraph(toGraphInput(graph));
         const text = analysis.isEmpty
             ? "The canvas is empty. Switch to Build mode and describe a system, and I'll draw it."
@@ -75,48 +75,62 @@ export const streamChatAnswer = async ({ graph, history, prompt, focusNodeIds = 
         return { text, meta: OFFLINE_META, usage: {} };
     }
 
+    const chain = await filterOpenCircuits(rawChain);
     const system = buildChatSystem(graph, focusNodeIds);
     const messages = toModelMessages(history, prompt);
 
-    const { value, meta } = await runWithFallback(
-        attemptsFor(async (provider, attemptSignal) => {
-            // Errors arrive as stream parts rather than thrown exceptions, so the original is kept: its HTTP
-            // status decides whether the runner retries.
-            let streamError: unknown;
-            const result = streamText({
-                model: provider.model,
-                system,
-                messages,
-                providerOptions: provider.providerOptions,
-                abortSignal: attemptSignal,
-                maxRetries: 0,
-                temperature: 0.4,
-                maxOutputTokens: 1500,
-                onError: ({ error }) => {
-                    streamError = error;
-                },
-            });
+    let value: { text: string; usage: TokenUsage };
+    let meta: RunMeta;
 
-            let text = "";
-            try {
-                for await (const chunk of result.textStream) {
-                    text += chunk;
-                    onText(text);
+    try {
+        const result = await runWithFallback(
+            attemptsFor(async (provider, attemptSignal) => {
+                // Errors arrive as stream parts rather than thrown exceptions, so the original is kept: its HTTP
+                // status decides whether the runner retries.
+                let streamError: unknown;
+                const result = streamText({
+                    model: provider.model,
+                    system,
+                    messages,
+                    providerOptions: provider.providerOptions,
+                    abortSignal: attemptSignal,
+                    maxRetries: 0,
+                    temperature: 0.4,
+                    maxOutputTokens: 1500,
+                    onError: ({ error }) => {
+                        streamError = error;
+                    },
+                });
+
+                let text = "";
+                try {
+                    for await (const chunk of result.textStream) {
+                        text += chunk;
+                        onText(text);
+                    }
+                    if (streamError) throw streamError;
+                } catch (error) {
+                    throw streamError ?? error;
                 }
-                if (streamError) throw streamError;
-            } catch (error) {
-                throw streamError ?? error;
+                const usage = await result.usage;
+                return { text: text.trim(), usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
+            }, chain),
+            {
+                signal,
+                validate: ({ text }) => {
+                    if (!text) throw new Error("The model returned an empty answer");
+                },
             }
-            const usage = await result.usage;
-            return { text: text.trim(), usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
-        }, chain),
-        {
-            signal,
-            validate: ({ text }) => {
-                if (!text) throw new Error("The model returned an empty answer");
-            },
+        );
+        value = result.value;
+        meta = result.meta;
+        void recordCircuitBreakerAttempts(meta.attempts);
+    } catch (error) {
+        if (error instanceof AllProvidersFailedError) {
+            void recordCircuitBreakerAttempts(error.attempts);
         }
-    );
+        throw error;
+    }
 
     return { text: value.text, meta, usage: value.usage };
 };

@@ -1,8 +1,8 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { SEVERITIES, analyzeGraph, designOperationSchema, type Analysis, type ReviewRecommendation } from "@repo/types";
-import { attemptsFor, getProviderChain } from "./providers";
-import { runWithFallback, type RunMeta } from "./runWithFallback";
+import { attemptsFor, filterOpenCircuits, getProviderChain, recordCircuitBreakerAttempts } from "./providers";
+import { AllProvidersFailedError, runWithFallback, type RunMeta } from "./runWithFallback";
 import { repairPlan } from "./planQuality";
 import type { TokenUsage } from "./design";
 import { describeGraph, toGraphInput, type FlowGraph } from "./graph";
@@ -49,10 +49,10 @@ const describeAnalysisForPrompt = (analysis: Analysis) =>
 
 export const generateReview = async (graph: FlowGraph, options: { signal?: AbortSignal } = {}): Promise<ReviewResult> => {
     const analysis = analyzeGraph(toGraphInput(graph));
-    const chain = getProviderChain();
+    const rawChain = getProviderChain();
 
     // Without a provider (development only) the review is just the automated findings, as advice.
-    if (chain.length === 0) {
+    if (rawChain.length === 0) {
         return {
             summary: analysis.findings.length
                 ? `Offline review: the automated analysis found ${analysis.findings.length} issues (score ${analysis.score}/100).`
@@ -71,28 +71,43 @@ export const generateReview = async (graph: FlowGraph, options: { signal?: Abort
         };
     }
 
-    const { value, meta } = await runWithFallback(
-        attemptsFor(async (provider, signal) => {
-            const { output, usage } = await generateText({
-                model: provider.model,
-                system: SYSTEM_PROMPT,
-                prompt: `Diagram:\n${describeGraph(graph)}\n\nAutomated analysis:\n${describeAnalysisForPrompt(analysis)}`,
-                output: Output.object({ schema: reviewSchema }),
-                providerOptions: provider.providerOptions,
-                abortSignal: signal,
-                maxRetries: 0,
-                temperature: 0.3,
-                maxOutputTokens: 6000,
-            });
-            return { output, usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
-        }, chain),
-        {
-            signal: options.signal,
-            validate: ({ output }) => {
-                if (output.recommendations.length === 0) throw new Error("The review had no recommendations");
-            },
+    const chain = await filterOpenCircuits(rawChain);
+
+    let value: { output: z.infer<typeof reviewSchema>; usage: TokenUsage };
+    let meta: RunMeta;
+
+    try {
+        const result = await runWithFallback(
+            attemptsFor(async (provider, signal) => {
+                const { output, usage } = await generateText({
+                    model: provider.model,
+                    system: SYSTEM_PROMPT,
+                    prompt: `Diagram:\n${describeGraph(graph)}\n\nAutomated analysis:\n${describeAnalysisForPrompt(analysis)}`,
+                    output: Output.object({ schema: reviewSchema }),
+                    providerOptions: provider.providerOptions,
+                    abortSignal: signal,
+                    maxRetries: 0,
+                    temperature: 0.3,
+                    maxOutputTokens: 6000,
+                });
+                return { output, usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
+            }, chain),
+            {
+                signal: options.signal,
+                validate: ({ output }) => {
+                    if (output.recommendations.length === 0) throw new Error("The review had no recommendations");
+                },
+            }
+        );
+        value = result.value;
+        meta = result.meta;
+        void recordCircuitBreakerAttempts(meta.attempts);
+    } catch (error) {
+        if (error instanceof AllProvidersFailedError) {
+            void recordCircuitBreakerAttempts(error.attempts);
         }
-    );
+        throw error;
+    }
 
     // Each fix is repaired against the *current* graph on its own, because a user may apply any one of them.
     const recommendations: ReviewRecommendation[] = value.output.recommendations.slice(0, 8).map((recommendation, index) => ({

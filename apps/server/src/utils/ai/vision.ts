@@ -2,8 +2,8 @@ import { generateText, Output } from "ai";
 import type { ImageType } from "@repo/types";
 import { DESIGN_SYSTEM_PROMPT, MAX_DESIGN_OPERATIONS, designPlanSchema, type DesignResult } from "./design";
 import { assertPlanQuality, repairPlan } from "./planQuality";
-import { attemptsFor, getVisionChain } from "./providers";
-import { runWithFallback } from "./runWithFallback";
+import { attemptsFor, filterOpenCircuits, getVisionChain, recordCircuitBreakerAttempts } from "./providers";
+import { AllProvidersFailedError, runWithFallback, type RunMeta } from "./runWithFallback";
 import { describeGraph, type FlowGraph } from "./graph";
 
 const VISION_ADDENDUM = `
@@ -33,36 +33,51 @@ export class NoVisionProviderError extends Error {
   models.
  */
 export const generateImagePlan = async (image: ImageInput, prompt: string, graph: FlowGraph, options: { signal?: AbortSignal } = {}): Promise<DesignResult> => {
-    const chain = getVisionChain();
-    if (chain.length === 0) throw new NoVisionProviderError();
+    const rawChain = getVisionChain();
+    if (rawChain.length === 0) throw new NoVisionProviderError();
 
-    const { value, meta } = await runWithFallback(
-        attemptsFor(async (provider, signal) => {
-            const { output, usage } = await generateText({
-                model: provider.model,
-                system: DESIGN_SYSTEM_PROMPT + VISION_ADDENDUM,
-                messages: [
-                    {
-                        role: "user",
-                        content: [
-                            { type: "text", text: `Current canvas:\n${describeGraph(graph)}\n\nRequest: ${prompt}` },
-                            { type: "image", image: image.bytes, mediaType: image.mediaType },
-                        ],
-                    },
-                ],
-                output: Output.object({ schema: designPlanSchema }),
-                providerOptions: provider.providerOptions,
-                abortSignal: signal,
-                maxRetries: 0,
-                temperature: 0.2,
-                maxOutputTokens: 8000,
-            });
-            const requested = output.operations.length;
-            const { plan, dropped } = repairPlan(graph, { ...output, operations: output.operations.slice(0, MAX_DESIGN_OPERATIONS) });
-            return { plan, dropped, requested, usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
-        }, chain),
-        { signal: options.signal, validate: (result) => assertPlanQuality(graph, result.plan, result.requested) }
-    );
+    const chain = await filterOpenCircuits(rawChain);
+
+    let value: { plan: ReturnType<typeof repairPlan>["plan"]; dropped: string[]; requested: number; usage: { inputTokens?: number; outputTokens?: number } };
+    let meta: RunMeta;
+
+    try {
+        const result = await runWithFallback(
+            attemptsFor(async (provider, signal) => {
+                const { output, usage } = await generateText({
+                    model: provider.model,
+                    system: DESIGN_SYSTEM_PROMPT + VISION_ADDENDUM,
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                { type: "text", text: `Current canvas:\n${describeGraph(graph)}\n\nRequest: ${prompt}` },
+                                { type: "image", image: image.bytes, mediaType: image.mediaType },
+                            ],
+                        },
+                    ],
+                    output: Output.object({ schema: designPlanSchema }),
+                    providerOptions: provider.providerOptions,
+                    abortSignal: signal,
+                    maxRetries: 0,
+                    temperature: 0.2,
+                    maxOutputTokens: 8000,
+                });
+                const requested = output.operations.length;
+                const { plan, dropped } = repairPlan(graph, { ...output, operations: output.operations.slice(0, MAX_DESIGN_OPERATIONS) });
+                return { plan, dropped, requested, usage: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens } };
+            }, chain),
+            { signal: options.signal, validate: (result) => assertPlanQuality(graph, result.plan, result.requested) }
+        );
+        value = result.value;
+        meta = result.meta;
+        void recordCircuitBreakerAttempts(meta.attempts);
+    } catch (error) {
+        if (error instanceof AllProvidersFailedError) {
+            void recordCircuitBreakerAttempts(error.attempts);
+        }
+        throw error;
+    }
 
     return { plan: value.plan, meta, usage: value.usage, dropped: value.dropped };
 };
