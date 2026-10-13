@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import ServerWakeLoader from "@/components/common/ServerWakeLoader";
 import { useGetProfile } from "@/hooks/auth/useGetProfile";
 import { clearUserQueries } from "@/lib/queryClient";
 import { toAppUser } from "@/lib/user";
@@ -17,14 +18,6 @@ const AuthLoader = ({ children }: { children: ReactNode }) => {
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const isBootstrapped = useAuthStore((state) => state.isBootstrapped);
 
-  // A sleeping free-tier API can take up to a minute to answer; say so instead of looking frozen.
-  const [slow, setSlow] = useState(false);
-  useEffect(() => {
-    if (isBootstrapped) return;
-    const timer = setTimeout(() => setSlow(true), 6_000);
-    return () => clearTimeout(timer);
-  }, [isBootstrapped]);
-
   useEffect(() => {
     if (isSuccess && data?.data?.user) {
       setUser(toAppUser(data.data.user));
@@ -35,32 +28,8 @@ const AuthLoader = ({ children }: { children: ReactNode }) => {
     }
   }, [isSuccess, isError, data, setUser, clearAuth]);
 
-  if (!isBootstrapped) {
-    return (
-      <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-base p-6 text-center select-none">
-        <div className="relative mb-8 flex h-24 w-24 items-center justify-center">
-          <div className="absolute inset-0 rounded-full border border-surface-border animate-pulse" />
-          <div className="absolute inset-0 rounded-full border-t border-brand animate-spin" />
-          <div className="h-1.5 w-1.5 rounded-full bg-brand" />
-        </div>
-        <p className="font-mono text-[11px] uppercase tracking-[0.4em] text-copy-faint">
-          Ghost AI
-        </p>
-        <p className="mt-2 text-sm text-copy-muted">
-          Preparing your workspace…
-        </p>
-        {slow && (
-          <p
-            className="mt-3 max-w-xs text-xs leading-relaxed text-copy-faint"
-            role="status"
-          >
-            The server is waking up after being idle. This can take up to a
-            minute the first time.
-          </p>
-        )}
-      </div>
-    );
-  }
+  // A sleeping free-tier API can take up to a minute to answer; the loader says so instead of looking frozen.
+  if (!isBootstrapped) return <ServerWakeLoader />;
 
   return <>{children}</>;
 };
