@@ -8,7 +8,7 @@
   app's own origin, the cookies are first-party and work everywhere.
  */
 
-// Only these request headers are forwarded. Everything else, including anything named x-ghost-*,
+// Only these request headers are forwarded. Everything else, including anything named x-plano-*,
 // x-forwarded-* or host, is dropped, so a browser cannot smuggle identity headers to the API.
 const FORWARD_REQUEST_HEADERS = [
   "cookie",
@@ -27,8 +27,8 @@ const FORWARD_RESPONSE_HEADERS = [
   "retry-after",
 ] as const;
 
-export const PROXY_SECRET_HEADER = "x-ghost-proxy-secret";
-export const PROXY_CLIENT_IP_HEADER = "x-ghost-client-ip";
+export const PROXY_SECRET_HEADER = "x-plano-proxy-secret";
+export const PROXY_CLIENT_IP_HEADER = "x-plano-client-ip";
 
 /** The visitor's IP as the hosting platform reports it. Vercel sets these itself, overwriting anything the browser sent. */
 export const clientIpOf = (headers: Headers): string | undefined => {
@@ -81,9 +81,11 @@ export const buildTargetUrl = (
         segment === "." ||
         segment.includes("/") ||
         segment.includes("\\"),
-    )
+    ) ||
+    segments[0] === "internal"
   )
     return null;
+
 
   let target: URL;
   try {

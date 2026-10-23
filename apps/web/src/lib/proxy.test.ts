@@ -62,8 +62,8 @@ describe("forwardRequestHeaders", () => {
     origin: "https://app.vercel.app",
     authorization: "Bearer leak",
     "x-forwarded-for": "6.6.6.6",
-    "x-ghost-client-ip": "1.1.1.1",
-    "x-ghost-proxy-secret": "forged-by-the-browser",
+    "x-plano-client-ip": "1.1.1.1",
+    "x-plano-proxy-secret": "forged-by-the-browser",
   });
 
   it("forwards only the headers the API needs", () => {
@@ -80,15 +80,15 @@ describe("forwardRequestHeaders", () => {
       secret: "real-secret",
       clientIp: "203.0.113.9",
     });
-    expect(out.get("x-ghost-proxy-secret")).toBe("real-secret");
-    expect(out.get("x-ghost-client-ip")).toBe("203.0.113.9");
+    expect(out.get("x-plano-proxy-secret")).toBe("real-secret");
+    expect(out.get("x-plano-client-ip")).toBe("203.0.113.9");
     expect(out.get("x-forwarded-for")).toBeNull();
   });
 
   it("sends no identity headers at all when there is no secret configured", () => {
     const out = forwardRequestHeaders(incoming, { clientIp: "203.0.113.9" });
-    expect(out.get("x-ghost-client-ip")).toBeNull();
-    expect(out.get("x-ghost-proxy-secret")).toBeNull();
+    expect(out.get("x-plano-client-ip")).toBeNull();
+    expect(out.get("x-plano-proxy-secret")).toBeNull();
   });
 });
 
