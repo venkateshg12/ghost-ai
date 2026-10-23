@@ -14,11 +14,11 @@ export interface CircuitBreakerRedis {
  */
 export const recordFailure = async (redis: CircuitBreakerRedis | Redis, provider: string): Promise<void> => {
     try {
-        const key = `ghost:ai:cb:${provider}:fails`;
+        const key = `plano:ai:cb:${provider}:fails`;
         const fails = await redis.incr(key);
         if (fails === 1) await redis.expire(key, 120);
         if (fails >= 3) {
-            await redis.set(`ghost:ai:cb:${provider}:open`, "1", "EX", 300);
+            await redis.set(`plano:ai:cb:${provider}:open`, "1", "EX", 300);
         }
     } catch (error) {
         console.warn(`[circuitBreaker] Redis error recording failure for ${provider}:`, error);
@@ -30,7 +30,7 @@ export const recordFailure = async (redis: CircuitBreakerRedis | Redis, provider
  */
 export const recordSuccess = async (redis: CircuitBreakerRedis | Redis, provider: string): Promise<void> => {
     try {
-        await redis.del(`ghost:ai:cb:${provider}:fails`);
+        await redis.del(`plano:ai:cb:${provider}:fails`);
     } catch (error) {
         console.warn(`[circuitBreaker] Redis error recording success for ${provider}:`, error);
     }
@@ -42,7 +42,7 @@ export const recordSuccess = async (redis: CircuitBreakerRedis | Redis, provider
  */
 export const isOpen = async (redis: CircuitBreakerRedis | Redis, provider: string): Promise<boolean> => {
     try {
-        return (await redis.exists(`ghost:ai:cb:${provider}:open`)) === 1;
+        return (await redis.exists(`plano:ai:cb:${provider}:open`)) === 1;
     } catch (error) {
         console.warn(`[circuitBreaker] Redis error checking status for ${provider}:`, error);
         return false;

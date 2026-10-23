@@ -18,7 +18,7 @@ export const takeSlot = async (
 ): Promise<number> => {
     try {
         const window = Math.floor(now / 60_000);
-        const key = `ghost:ai:rl:${provider}:${window}`;
+        const key = `plano:ai:rl:${provider}:${window}`;
         const count = await redis.incr(key);
         if (count === 1) await redis.expire(key, 90);
         return count <= perMinute ? 0 : (window + 1) * 60_000 - now;
