@@ -6,7 +6,8 @@ import { existsSync, readFileSync } from "node:fs";
 // The only variables the deployed tasks may see. Anything not listed here is never uploaded.
 const TASK_ENV = [
     "DATABASE_URL",
-    "LIVEBLOCKS_SECRET_KEY",
+    "INTERNAL_API_SECRET",
+    "INTERNAL_API_URL",
     "BLOB_READ_WRITE_TOKEN",
     "NVIDIA_API_KEY", "NVIDIA_MODEL", "NVIDIA_BASE_URL", "NVIDIA_RPM",
     "GOOGLE_GENERATIVE_AI_API_KEY", "GEMINI_MODEL", "GEMINI_FALLBACK_MODEL",

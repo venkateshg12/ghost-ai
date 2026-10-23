@@ -18,7 +18,7 @@ jobs:
     env:
       TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      LIVEBLOCKS_SECRET_KEY: ${{ secrets.LIVEBLOCKS_SECRET_KEY }}
+      INTERNAL_API_URL: ${{ secrets.INTERNAL_API_URL }}
       BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
       NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
       NVIDIA_MODEL: ${{ secrets.NVIDIA_MODEL }}
@@ -34,7 +34,9 @@ jobs:
       CLIENT_URL: ${{ secrets.CLIENT_URL }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       JWT_REFRESH_SECRET: ${{ secrets.JWT_REFRESH_SECRET }}
+      INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
       TRIGGER_SECRET_KEY: ${{ secrets.TRIGGER_SECRET_KEY }}
+
       REDIS_HOST: ${{ secrets.REDIS_HOST }}
       REDIS_PORT: ${{ secrets.REDIS_PORT }}
       REDIS_USERNAME: ${{ secrets.REDIS_USERNAME }}
