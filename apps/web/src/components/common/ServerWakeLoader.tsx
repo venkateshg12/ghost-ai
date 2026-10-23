@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 /*
   The splash shown while the session is resolved, which on a sleeping free-tier API can take up to a
-  minute. Instead of a spinner it draws a tiny system diagram, the thing Ghost AI is for: the browser
+  minute. Instead of a spinner it draws a tiny system diagram, the thing Plano is for: the browser
   and the database appear, the API node pulses until it answers, a packet keeps knocking on its door, and
   the link to the database stays muted until the server is up. Motion lives in globals.css (wake-*) and is
   switched off for prefers-reduced-motion, which leaves the finished diagram.
@@ -129,7 +129,7 @@ const ServerWakeLoader = () => {
           DB
         </text>
 
-        {/* Ghost AI's cursor, drifting beside the node it is waiting on (same look as a collaborator's). */}
+        {/* Plano's cursor, drifting beside the node it is waiting on (same look as a collaborator's). */}
         <g className="wake-cursor">
           <path d="M0 0 L0 14 L4 10.5 L7.5 17 L10 16 L6.8 9.6 L12 9.2 Z" className="fill-ai" />
           <rect x="10" y="14" width="50" height="15" rx="7.5" className="fill-ai" />
@@ -137,13 +137,13 @@ const ServerWakeLoader = () => {
             x="35" y="24.5" textAnchor="middle" fontSize="8.5"
             className="fill-copy-primary font-mono"
           >
-            Ghost AI
+            Plano
           </text>
         </g>
       </svg>
 
       <p className="font-mono text-[11px] uppercase tracking-[0.4em] text-copy-faint">
-        Ghost AI
+        Plano
       </p>
       <p
         className="mt-2 max-w-xs text-sm leading-relaxed text-copy-muted"
