@@ -33,8 +33,8 @@ const EDGE_HEADERS = [
   the web app adds both headers itself (overwriting anything the browser sent). Without the secret they are
   ignored, so nobody can pick their own rate-limit bucket by sending them.
  */
-const PROXY_SECRET_HEADER = "x-ghost-proxy-secret";
-const PROXY_CLIENT_IP_HEADER = "x-ghost-client-ip";
+const PROXY_SECRET_HEADER = "x-plano-proxy-secret";
+const PROXY_CLIENT_IP_HEADER = "x-plano-client-ip";
 
 // Hashing first keeps the comparison length-independent: timingSafeEqual throws on a length mismatch.
 const safeEqual = (a: string, b: string) =>
