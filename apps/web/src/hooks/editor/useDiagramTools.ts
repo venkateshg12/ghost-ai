@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useReactFlow } from "@xyflow/react";
+import { isFreePoint } from "@repo/types";
 import type { CanvasFlowEdge, CanvasFlowNode } from "@/types";
 import {
   downloadJson,
@@ -16,7 +17,7 @@ type ExportStatus =
   | { kind: "done"; what: string }
   | { kind: "error"; message: string };
 
-const FILE_BASE = "ghost-ai-diagram";
+const FILE_BASE = "plano-diagram";
 
 /*
   Canvas-wide actions that work on the nodes and edges in the browser: lay the diagram out neatly, and
@@ -45,7 +46,9 @@ export const useDiagramTools = () => {
 
   // Layered left-to-right layout; the dagre-based module is loaded the first time it is used.
   const tidy = useCallback(async () => {
-    const nodes = getNodes();
+    const all = getNodes();
+    // Free-standing lines are annotations: they stay where they were drawn.
+    const nodes = all.filter((node) => !isFreePoint(node.data?.shape));
     if (nodes.length === 0) return;
     const { layoutGraph } = await import("@repo/types/layout");
 
