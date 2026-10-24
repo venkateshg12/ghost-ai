@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { slugify } from "@repo/types";
+import { useParams } from "next/navigation";
+import { PROJECT_LIMIT_ERROR_CODE, slugify } from "@repo/types";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,8 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import AuthModal from "@/components/auth/AuthModal";
 import FormMessage from "@/components/auth/FormMessage";
 import { useCreateProject } from "@/hooks/project/useCreateProject";
+import { useProjectQuota } from "@/hooks/project/useProjectQuota";
+import { hasGuestDraft } from "@/lib/guestDraft";
 import { useDeleteProject } from "@/hooks/project/useDeleteProject";
 import { useRenameProject } from "@/hooks/project/useRenameProject";
 import { useEditorStore } from "@/store/editor.store";
@@ -22,11 +26,36 @@ import ShareDialog from "./ShareDialog";
 
 const dialogClassName = "rounded-3xl border-surface-border bg-surface text-copy-primary backdrop-blur-md sm:max-w-[425px]";
 
+const ProjectLimitNotice = () => {
+  const closeDialog = useEditorStore((state) => state.closeDialog);
+  const { max } = useProjectQuota();
+
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Project limit reached</DialogTitle>
+        <DialogDescription className="text-copy-muted">
+          You&apos;re using all {max} of your projects. Delete one from the Projects panel to make room for a new one.
+        </DialogDescription>
+      </DialogHeader>
+      <DialogFooter className="mt-4 border-t border-surface-border-subtle pt-4">
+        <Button onClick={closeDialog}>Got it</Button>
+      </DialogFooter>
+    </>
+  );
+};
+
 const CreateProjectDialog = () => {
+  const { roomId } = useParams<{ roomId?: string }>();
   const closeDialog = useEditorStore((state) => state.closeDialog);
   const [name, setName] = useState("");
-  const { mutate: create, isPending, error } = useCreateProject();
+  const { used, max, atLimit } = useProjectQuota();
+  // Created from the canvas at `/` (not from inside a project): take the drawing along.
+  const [importDraft] = useState(() => !roomId && hasGuestDraft());
+  const { mutate: create, isPending, isSuccess, error } = useCreateProject({ importDraft });
   const slug = slugify(name);
+
+  if (atLimit && !isPending && !isSuccess) return <ProjectLimitNotice />;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,11 +68,21 @@ const CreateProjectDialog = () => {
       <DialogHeader>
         <DialogTitle>Create Project</DialogTitle>
         <DialogDescription className="text-copy-muted">
-          Enter a name for your new architecture design project.
+          {importDraft
+            ? "Name your project — the canvas you've drawn is saved into it."
+            : "Enter a name for your new architecture design project."}{" "}
+          <span className="font-mono text-xs">
+            ({used}/{max} projects used)
+          </span>
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-4 py-4">
-        {error && <FormMessage type="error" message={error.message} />}
+        {error && (
+          <FormMessage
+            type="error"
+            message={error.code === PROJECT_LIMIT_ERROR_CODE ? "You've reached your project limit. Delete one to create another." : error.message}
+          />
+        )}
         <div className="space-y-2">
           <Label htmlFor="create-name" className="font-mono text-xs text-copy-secondary">
             Project Name
@@ -180,6 +219,7 @@ const ProjectDialogs = () => {
         </DialogContent>
       </Dialog>
       <ShareDialog />
+      <AuthModal />
     </>
   );
 };
