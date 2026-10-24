@@ -1,4 +1,4 @@
-import { validEdges, type GraphInput, type GraphNodeInput } from "./graph";
+import { validEdges, withoutFreeLines, type GraphInput, type GraphNodeInput } from "./graph";
 
 /*
   Mermaid flowchart text for a diagram, so a design can be pasted into a README, a wiki or any
@@ -27,14 +27,39 @@ const nodeSyntax = (id: string, node: GraphNodeInput) => {
             return `${id}[("${label}")]`;
         case "hexagon":
             return `${id}{{"${label}"}}`;
+        case "parallelogram":
+            return `${id}[/"${label}"/]`;
+        case "triangle":
+            return `${id}>"${label}"]`;
+        case "cloud":
+        case "star":
+            return `${id}("${label}")`;
+        case "document":
+            return `${id}[["${label}"]]`;
         default:
             return `${id}["${label}"]`;
     }
 };
 
+// The Mermaid link for a styled edge. An unstyled edge stays "-->" so existing output doesn't change.
+const markerHead = (marker: string | undefined, arrow: string) => {
+    if (!marker || marker === "none") return "";
+    return marker === "circle" || marker === "circle-outline" ? "o" : arrow;
+};
+
+const linkOf = (edge: { lineStyle?: string; startMarker?: string; endMarker?: string }) => {
+    const start = markerHead(edge.startMarker, "<");
+    const endMarker = edge.endMarker ?? "triangle";
+    const end = markerHead(endMarker, ">");
+    // Mermaid has only solid and dashed lines; a dotted line is exported as dashed.
+    const body = edge.lineStyle === "dashed" || edge.lineStyle === "dotted" ? "-.-" : end ? "--" : "---";
+    return `${start}${body}${end}`;
+};
+
 const HEX = /^#[0-9a-fA-F]{3,8}$/;
 
-export const toMermaid = (graph: GraphInput, direction: "LR" | "TB" = "LR"): string => {
+export const toMermaid = (input: GraphInput, direction: "LR" | "TB" = "LR"): string => {
+    const graph = withoutFreeLines(input);
     const ids = new Map(graph.nodes.map((node, index) => [node.id, `n${index + 1}`]));
     const lines = [`flowchart ${direction}`];
 
@@ -42,7 +67,7 @@ export const toMermaid = (graph: GraphInput, direction: "LR" | "TB" = "LR"): str
 
     for (const edge of validEdges(graph)) {
         const label = edge.label?.trim();
-        lines.push(`    ${ids.get(edge.source)} -->${label ? `|${escapeEdgeLabel(label)}|` : ""} ${ids.get(edge.target)}`);
+        lines.push(`    ${ids.get(edge.source)} ${linkOf(edge)}${label ? `|${escapeEdgeLabel(label)}|` : ""} ${ids.get(edge.target)}`);
     }
 
     // Keep the canvas colours when they are plain hex values; anything else is ignored rather than injected.

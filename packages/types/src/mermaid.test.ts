@@ -51,4 +51,39 @@ describe("toMermaid", () => {
         const hostile = toMermaid({ nodes: [{ id: "a", label: "A", color: "red;click a call evil()", textColor: "#fff" }], edges: [] });
         expect(hostile).not.toContain("style");
     });
+    it("uses Mermaid syntax for the extra shapes", () => {
+        const shapes = toMermaid({
+            nodes: [
+                { id: "a", label: "IO", shape: "parallelogram" },
+                { id: "b", label: "Up", shape: "triangle" },
+                { id: "c", label: "Net", shape: "cloud" },
+                { id: "d", label: "Doc", shape: "document" },
+            ],
+            edges: [],
+        });
+        expect(shapes).toContain('n1[/"IO"/]');
+        expect(shapes).toContain('n2>"Up"]');
+        expect(shapes).toContain('n3("Net")');
+        expect(shapes).toContain('n4[["Doc"]]');
+    });
+
+    it("reflects line style and arrowheads, and leaves plain edges as -->", () => {
+        const nodes = [{ id: "a", label: "A" }, { id: "b", label: "B" }];
+        const link = (edge: object) => toMermaid({ nodes, edges: [{ source: "a", target: "b", ...edge }] });
+        expect(link({})).toContain("n1 --> n2");
+        expect(link({ endMarker: "none" })).toContain("n1 --- n2");
+        expect(link({ startMarker: "arrow", endMarker: "arrow" })).toContain("n1 <--> n2");
+        expect(link({ lineStyle: "dashed" })).toContain("n1 -.-> n2");
+        expect(link({ lineStyle: "dotted", endMarker: "none" })).toContain("n1 -.- n2");
+        expect(link({ endMarker: "circle" })).toContain("n1 --o n2");
+    });
+
+    it("leaves free-standing lines out", () => {
+        const out = toMermaid({
+            nodes: [{ id: "a", label: "A" }, { id: "p1", label: "", shape: "point" }, { id: "p2", label: "", shape: "point" }],
+            edges: [{ source: "p1", target: "p2" }],
+        });
+        expect(out).not.toContain("-->");
+        expect(out.match(/\["/g)).toHaveLength(1);
+    });
 });

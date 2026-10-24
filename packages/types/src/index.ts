@@ -7,3 +7,7 @@ export * from "./ai"
 export * from "./graph"
 export * from "./graphAnalysis"
 export * from "./mermaid"
+
+export * from "./realtime"
+export * from "./realtime-doc"
+
