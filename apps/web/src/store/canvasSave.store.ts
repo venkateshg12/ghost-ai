@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 /*
   The workspace registers its `saveNow` here so the navbar's Save button — which lives outside the
-  Liveblocks room — can trigger the same save the autosave uses.
+  realtime room — can ask the server to save now. It rejects when there is no connection to ask.
  */
 type CanvasSaveRegistry = {
     saveNow: (() => Promise<void>) | null;
