@@ -1,5 +1,5 @@
 {
-  "name": "ghost-ai",
+  "name": "plano",
   "private": true,
   "scripts": {
     "build": "turbo run build",

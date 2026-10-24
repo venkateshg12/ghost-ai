@@ -4,7 +4,7 @@ services:
   # Queue + rate limiter. Must stay `noeviction` — BullMQ loses jobs otherwise.
   redis:
     image: redis:latest
-    container_name: ghost-ai-redis
+    container_name: plano-redis
     ports:
       - "6379:6379"
     volumes:
@@ -21,7 +21,7 @@ services:
   # entry has one, the namespace version counters don't. No persistence — empty after a restart is fine.
   redis-cache:
     image: redis:7
-    container_name: ghost-ai-redis-cache
+    container_name: plano-redis-cache
     ports:
       - "6380:6379"
     command: redis-server --save "" --appendonly no --maxmemory 256mb --maxmemory-policy volatile-lru
@@ -32,20 +32,20 @@ services:
       retries: 5
 
   # Optional local Postgres for apps/server. Point DATABASE_URL at
-  # postgresql://ghostai:ghostai@localhost:5432/ghostai to use it instead of a hosted database.
+  # postgresql://plano:plano@localhost:5432/plano to use it instead of a hosted database.
   postgres:
     image: postgres:16
-    container_name: ghost-ai-postgres
+    container_name: plano-postgres
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: ghostai
-      POSTGRES_PASSWORD: ghostai
-      POSTGRES_DB: ghostai
+      POSTGRES_USER: plano
+      POSTGRES_PASSWORD: plano
+      POSTGRES_DB: plano
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ghostai -d ghostai"]
+      test: ["CMD-SHELL", "pg_isready -U plano -d plano"]
       interval: 5s
       timeout: 3s
       retries: 5
