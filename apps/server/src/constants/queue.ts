@@ -1,5 +1,5 @@
 export const QUEUE_NAMES = {
-    EMAIL : 'ghost-ai-email-queue'
+    EMAIL : 'plano-email-queue'
 } as const;
 
 export const JOB_NAMES = {

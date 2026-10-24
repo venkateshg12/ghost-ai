@@ -29,6 +29,15 @@ if (JWT_SECRET === JWT_REFRESH_SECRET) {
     throw new Error("JWT_SECRET and JWT_REFRESH_SECRET must be different values");
 }
 
+export const INTERNAL_API_SECRET = getEnv("INTERNAL_API_SECRET");
+const MIN_INTERNAL_SECRET_LENGTH = 32;
+if (INTERNAL_API_SECRET.length < MIN_INTERNAL_SECRET_LENGTH) {
+    throw new Error(`INTERNAL_API_SECRET must be at least ${MIN_INTERNAL_SECRET_LENGTH} characters (generate with: openssl rand -hex 32)`);
+}
+// Where Trigger.dev tasks reach this API (a task runs elsewhere, so it must be the public URL). Unused by the API itself.
+export const INTERNAL_API_URL = getEnv("INTERNAL_API_URL", `http://127.0.0.1:${PORT}`);
+
+
 /*
   Gmail API sender (see config/gmail.ts). All optional so the server still boots before the one-time
   authorization has produced GMAIL_REFRESH_TOKEN; sending fails with a clean error until it is set.
@@ -100,8 +109,6 @@ export const CACHE_REDIS_USERNAME = getEnv("CACHE_REDIS_USERNAME", REDIS_USERNAM
 export const CACHE_REDIS_PASSWORD = getEnv("CACHE_REDIS_PASSWORD", REDIS_PASSWORD);
 export const CACHE_ENABLED = getEnv("CACHE_ENABLED", "true");
 
-// Realtime canvas. Room tokens, server-side canvas writes and feed messages all go through this key.
-export const LIVEBLOCKS_SECRET_KEY = getEnv("LIVEBLOCKS_SECRET_KEY");
 
 // Trigger.dev runs the AI tasks (src/trigger). The SDK reads TRIGGER_SECRET_KEY itself; it is
 // required here so a missing key fails at boot rather than on the first AI request.
