@@ -31,8 +31,14 @@ import { authRoutes } from "./routes/auth.route";
 import { sessionRoutes } from "./routes/session.route";
 import { projectRoutes } from "./routes/project.route";
 import { aiRoutes } from "./routes/ai.route";
-import { liveblocksRoutes } from "./routes/liveblocks.route";
 import { gmailRoutes } from "./routes/gmail.route";
+import { realtimeRoutes } from "./routes/realtime.route";
+import { internalRoutes } from "./routes/internal.route";
+import { attachRealtime } from "./realtime/gateway";
+
+import { roomManager } from "./realtime/roomManager";
+import { registerLocalRooms } from "./realtime/local";
+
 
 /**
  * Basic auth for the queue dashboard. Compared with a timing-safe digest comparison so the
@@ -158,11 +164,14 @@ async function main() {
             cache.ping(),
         ]);
 
+        const rtStats = roomManager.stats();
+
         return res.status(postgresUp ? 200 : 503).json(
             ok({
                 status: postgresUp ? "ok" : "degraded",
                 postgres: postgresUp ? "up" : "down",
                 redis: redisReady ? "up" : "down",
+                realtime: rtStats,
             })
         );
     });
@@ -172,7 +181,9 @@ async function main() {
     app.use("/session", sessionRoutes);
     app.use("/projects", projectRoutes);
     app.use("/ai", aiRoutes);
-    app.use("/liveblocks", liveblocksRoutes);
+    app.use("/realtime", realtimeRoutes);
+    app.use("/internal", internalRoutes);
+
     // The path is fixed by the redirect URI registered with Google (/api/auth/gmail/callback).
     app.use("/api/auth/gmail", gmailRoutes);
 
@@ -188,6 +199,13 @@ async function main() {
             console.log(`BullMQ Dashboard available at: http://localhost:${BACKEND_PORT}/admin/queues`);
         }
     });
+
+    // The API process owns the rooms: AI helpers edit them directly instead of calling back over HTTP.
+    registerLocalRooms({
+        get: (roomId) => roomManager.getRoom(roomId),
+        getOrCreate: (roomId) => roomManager.getOrCreateRoom(roomId),
+    });
+    attachRealtime(server);
 
     /*
       Orderly shutdown, in the order that loses nothing: stop accepting connections, let in-flight
@@ -209,6 +227,7 @@ async function main() {
         forceExit.unref();
 
         try {
+            await roomManager.flushAll();
             await new Promise<void>((resolve) => server.close(() => resolve()));
             await closeWorkers();
             await cache.close();
@@ -220,6 +239,7 @@ async function main() {
             process.exit(1);
         }
     };
+
 
     process.on("SIGTERM", () => void shutdown("SIGTERM"));
     process.on("SIGINT", () => void shutdown("SIGINT"));
