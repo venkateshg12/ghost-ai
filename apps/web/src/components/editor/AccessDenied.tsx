@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Lock } from "lucide-react";
+import { ROUTES } from "@/constants/routes";
 import { Button } from "@/components/ui/button";
 
 // Shown for a project that doesn't exist and for one the user can't open — deliberately the same.
@@ -17,7 +18,7 @@ const AccessDenied = () => (
         </p>
       </div>
       <Button asChild className="w-full">
-        <Link href="/editor">Back to Editor Home</Link>
+        <Link href={ROUTES.home}>Back to the canvas</Link>
       </Button>
     </div>
   </div>

@@ -3,6 +3,8 @@
 import { useEffect, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import FullScreenLoader from "@/components/common/FullScreenLoader";
+import ServerWakeLoader from "@/components/common/ServerWakeLoader";
+import { ROUTES } from "@/constants/routes";
 import { useAuthStore } from "@/store/auth.store";
 
 // Signed-in users only. Anyone else is sent to sign in, with the page they wanted remembered.
@@ -14,13 +16,12 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     if (isBootstrapped && !user) {
-      router.replace(`/sign-in?from=${encodeURIComponent(pathname)}`);
+      router.replace(`${ROUTES.signIn}?from=${encodeURIComponent(pathname)}`);
     }
   }, [isBootstrapped, user, router, pathname]);
 
-  if (!isBootstrapped || !user) {
-    return <FullScreenLoader label="Checking your session…" />;
-  }
+  if (!isBootstrapped) return <ServerWakeLoader />;
+  if (!user) return <FullScreenLoader label="Checking your session…" />;
 
   return <>{children}</>;
 };
