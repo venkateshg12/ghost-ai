@@ -13,7 +13,7 @@ import {
   including Set-Cookie. See lib/proxy.ts for why, and for exactly what is allowed to cross.
 
   Server-only settings:
-    API_PROXY_TARGET    the API's origin, e.g. https://ghost-ai-api.onrender.com
+    API_PROXY_TARGET    the API's origin, e.g. https://plano-api.onrender.com
     PROXY_SHARED_SECRET the same secret the API has, which lets it trust the visitor IP we report
  */
 export const dynamic = "force-dynamic";
