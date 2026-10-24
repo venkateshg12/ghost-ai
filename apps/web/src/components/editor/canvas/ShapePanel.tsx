@@ -2,9 +2,10 @@
 
 import type { DragEvent } from "react";
 import type { DraggedShape } from "@/types";
+import { LINE_PRESETS } from "./lines";
 import { SHAPE_PRESETS } from "./shapes";
 
-export const SHAPE_DRAG_MIME = "application/ghost-shape";
+export const SHAPE_DRAG_MIME = "application/plano-shape";
 
 // A 1x1 transparent image, so the browser's own drag ghost doesn't sit next to ours.
 let emptyDragImage: HTMLImageElement | null = null;
@@ -30,29 +31,48 @@ const ShapePanel = ({ onDragStart, onDragEnd }: ShapePanelProps) => {
     onDragStart(shape);
   };
 
+  const items = [
+    ...SHAPE_PRESETS.map((preset) => ({
+      key: preset.type,
+      label: preset.label,
+      hint: `${preset.width} × ${preset.height}`,
+      icon: preset.icon,
+      payload: { type: preset.type, width: preset.width, height: preset.height } satisfies DraggedShape,
+    })),
+    ...LINE_PRESETS.map((preset) => ({
+      key: preset.id,
+      label: preset.label,
+      hint: "Line",
+      icon: preset.icon,
+      payload: { type: "line", width: preset.width, height: preset.height, edge: preset.style } satisfies DraggedShape,
+    })),
+  ];
+
+  const renderItem = (item: (typeof items)[number]) => (
+    <div
+      key={item.key}
+      draggable
+      role="button"
+      tabIndex={-1}
+      aria-label={`Drag to add ${item.label}`}
+      onDragStart={(event) => handleDragStart(event, item.payload)}
+      onDragEnd={onDragEnd}
+      className="group relative flex h-9 w-9 cursor-grab items-center justify-center rounded-full text-copy-secondary transition-colors hover:bg-subtle hover:text-copy-primary active:cursor-grabbing"
+    >
+      {item.icon}
+      <div className="pointer-events-none absolute bottom-full mb-2.5 origin-bottom scale-0 whitespace-nowrap rounded-xl border border-surface-border bg-surface px-2.5 py-1.5 font-mono text-[10px] text-copy-primary shadow-xl transition-transform group-hover:scale-100">
+        {item.label}
+        <span className="mt-0.5 block text-[8px] text-copy-muted">{item.hint}</span>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="pointer-events-auto absolute bottom-6 left-1/2 z-30 -translate-x-1/2">
-      <div className="flex select-none items-center gap-1 rounded-full border border-surface-border-subtle bg-surface/85 px-3 py-2 shadow-2xl backdrop-blur-xl">
-        {SHAPE_PRESETS.map((preset) => (
-          <div
-            key={preset.type}
-            draggable
-            role="button"
-            tabIndex={-1}
-            aria-label={`Drag to add ${preset.label}`}
-            onDragStart={(event) => handleDragStart(event, { type: preset.type, width: preset.width, height: preset.height })}
-            onDragEnd={onDragEnd}
-            className="group relative flex h-10 w-10 cursor-grab items-center justify-center rounded-full text-copy-secondary transition-colors hover:bg-subtle hover:text-copy-primary active:cursor-grabbing"
-          >
-            {preset.icon}
-            <div className="pointer-events-none absolute bottom-full mb-2.5 origin-bottom scale-0 whitespace-nowrap rounded-xl border border-surface-border bg-surface px-2.5 py-1.5 font-mono text-[10px] text-copy-primary shadow-xl transition-transform group-hover:scale-100">
-              {preset.label}
-              <span className="mt-0.5 block text-[8px] text-copy-muted">
-                {preset.width} × {preset.height}
-              </span>
-            </div>
-          </div>
-        ))}
+    <div className="pointer-events-auto absolute bottom-20 left-1/2 z-30 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 xl:bottom-6">
+      <div className="flex select-none flex-wrap items-center justify-center gap-0.5 rounded-3xl border border-surface-border-subtle bg-surface/85 px-3 py-2 shadow-2xl backdrop-blur-xl">
+        {items.slice(0, SHAPE_PRESETS.length).map(renderItem)}
+        <span className="mx-1 h-6 w-px bg-surface-border" aria-hidden="true" />
+        {items.slice(SHAPE_PRESETS.length).map(renderItem)}
       </div>
     </div>
   );

@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { CANVAS_TEMPLATES, type CanvasTemplate } from "./starter-templates"
 import { LayoutTemplate, ArrowRight } from "lucide-react"
+import { useTheme } from "@/lib/theme"
+import { themedNodeColors } from "@/lib/nodeTheme"
 
 interface StarterTemplatesModalProps {
   isOpen: boolean
@@ -19,6 +21,7 @@ interface StarterTemplatesModalProps {
 }
 
 function TemplatePreview({ template }: { template: CanvasTemplate }) {
+  const { resolved: theme } = useTheme()
   const svgWidth = 280
   const svgHeight = 140
 
@@ -71,7 +74,7 @@ function TemplatePreview({ template }: { template: CanvasTemplate }) {
               y1={source.cy}
               x2={target.cx}
               y2={target.cy}
-              stroke="#475569"
+              stroke="var(--canvas-edge)"
               strokeWidth="1.5"
               strokeDasharray="3 3"
               opacity="0.8"
@@ -83,8 +86,11 @@ function TemplatePreview({ template }: { template: CanvasTemplate }) {
         {template.nodes.map((node) => {
           const pos = nodePosMap.get(node.id)
           if (!pos) return null
-          const fillColor = node.data.color || "#1F1F1F"
-          const strokeColor = node.data.textColor || "#EDEDED"
+          const { bg: fillColor, text: strokeColor } = themedNodeColors(
+            node.data.color || "#1F1F1F",
+            node.data.textColor || "#EDEDED",
+            theme
+          )
 
           return (
             <g key={node.id}>
