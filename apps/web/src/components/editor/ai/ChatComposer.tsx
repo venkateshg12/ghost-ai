@@ -317,12 +317,12 @@ const ChatComposer = ({
         disabled={busy}
         spellCheck={false}
         maxLength={MAX_LENGTH}
-        aria-label="Message Ghost AI"
+        aria-label="Message Plano"
         onChange={(event) => onChange(event.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={
           busy
-            ? "Ghost AI is working…"
+            ? "Plano is working…"
             : attachment
               ? "Add an instruction (optional)…"
               : current.placeholder
@@ -404,7 +404,7 @@ const ChatComposer = ({
             <button
               type="submit"
               disabled={!canSend}
-              aria-label={busy ? "Ghost AI is working" : "Send message"}
+              aria-label={busy ? "Plano is working" : "Send message"}
               className={cn(
                 "flex h-8 w-8 items-center justify-center rounded-xl transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-success/50",
                 canSend

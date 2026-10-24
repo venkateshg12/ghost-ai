@@ -56,7 +56,7 @@ const ModelBadge = ({ meta }: { meta: NonNullable<ChatMessage["meta"]> }) => {
 const TypingDots = () => (
   <span
     className="inline-flex items-center gap-1 py-1"
-    aria-label="Ghost AI is typing"
+    aria-label="Plano is typing"
   >
     {[0, 1, 2].map((index) => (
       <span

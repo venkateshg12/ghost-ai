@@ -190,13 +190,18 @@ const ArchitectTab = ({ project }: { project: ProjectSummary }) => {
       },
       {
         onSuccess: (response) => setActiveRun(response.data),
-        onError: (error) =>
-          void sendChatMessage({
-            type: "chat",
-            role: "assistant",
-            content: `I couldn't read that image: ${error.message}`,
-            sender: { id: "ghost-ai", name: "Ghost AI", color: "#6457f9" },
-          }).catch(() => setNotice(error.message)),
+        onError: (error) => {
+          try {
+            sendChatMessage({
+              type: "chat",
+              role: "assistant",
+              content: `I couldn't read that image: ${error.message}`,
+              sender: { id: "plano", name: "Plano", color: "#6457f9" },
+            });
+          } catch {
+            setNotice(error.message);
+          }
+        },
       },
     );
   };
@@ -244,13 +249,18 @@ const ArchitectTab = ({ project }: { project: ProjectSummary }) => {
       {
         onSuccess: (response) => setActiveRun(response.data),
         // Failures to start are part of the conversation, so they go to the shared chat.
-        onError: (error) =>
-          void sendChatMessage({
-            type: "chat",
-            role: "assistant",
-            content: `I couldn't start that: ${error.message}`,
-            sender: { id: "ghost-ai", name: "Ghost AI", color: "#6457f9" },
-          }).catch(() => setNotice(error.message)),
+        onError: (error) => {
+          try {
+            sendChatMessage({
+              type: "chat",
+              role: "assistant",
+              content: `I couldn't start that: ${error.message}`,
+              sender: { id: "plano", name: "Plano", color: "#6457f9" },
+            });
+          } catch {
+            setNotice(error.message);
+          }
+        },
       },
     );
   };
@@ -281,7 +291,7 @@ const ArchitectTab = ({ project }: { project: ProjectSummary }) => {
     });
   };
 
-  const statusText = latestStatus?.text ?? "Ghost AI is working…";
+  const statusText = latestStatus?.text ?? "Plano is working…";
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
