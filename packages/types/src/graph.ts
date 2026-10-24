@@ -3,6 +3,8 @@
   export). React Flow's own node and edge types are structurally compatible with these, so callers
   map them with a one-liner and this package stays free of UI dependencies.
  */
+import { isFreePoint } from "./canvas";
+
 export interface GraphNodeInput {
     id: string;
     label: string;
@@ -19,12 +21,25 @@ export interface GraphEdgeInput {
     source: string;
     target: string;
     label?: string;
+    /** Line style, used only by exporters. */
+    lineStyle?: string;
+    startMarker?: string;
+    endMarker?: string;
 }
 
 export interface GraphInput {
     nodes: readonly GraphNodeInput[];
     edges: readonly GraphEdgeInput[];
 }
+
+/**
+ * The diagram without free-standing lines: their endpoint nodes are dropped, and `validEdges` then drops
+ * the lines themselves. Exports, analysis and layout describe the system, not the annotations on it.
+ */
+export const withoutFreeLines = (graph: GraphInput): GraphInput => ({
+    nodes: graph.nodes.filter((node) => !isFreePoint(node.shape)),
+    edges: graph.edges,
+});
 
 /** Edges whose endpoints both exist. Everything downstream assumes this. */
 export const validEdges = (graph: GraphInput): GraphEdgeInput[] => {

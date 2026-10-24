@@ -2,7 +2,7 @@ import { z } from "zod";
 import { NODE_COLORS, NODE_SHAPES } from "./canvas";
 import { projectIdSchema } from "./project";
 
-// The two room-scoped Liveblocks feeds. Kept apart on purpose: chat is conversation, status is progress.
+// The two room-scoped feeds (served by the in-house realtime engine). Kept apart on purpose: chat is conversation, status is progress.
 export const AI_CHAT_FEED = "ai-chat";
 export const AI_STATUS_FEED = "ai-status-feed";
 
@@ -72,7 +72,7 @@ export const chatMessagePayloadSchema = z.object({
     sender: z.object({
         id: z.string(),
         name: z.string(),
-        avatar: z.string().optional(),
+        avatar: z.string().nullish(),
         color: z.string().optional(),
     }),
 });
