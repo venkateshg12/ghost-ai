@@ -2,7 +2,7 @@ import { logger, metadata } from "@trigger.dev/sdk";
 import { analyzeGraph, suggestPrompts, type AiRunKind } from "@repo/types";
 import { orm } from "../prisma/db";
 import { removeObject } from "../utils/storage";
-import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/liveblocks";
+import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/realtime";
 import {
     AllProvidersFailedError,
     NoVisionProviderError,

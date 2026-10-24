@@ -1,7 +1,7 @@
 import { schemaTask } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { generateDesignPlan, recordRunResult } from "../utils/ai";
-import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/liveblocks";
+import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/realtime";
 import { executeDesignFlow } from "./designFlow";
 import { globalLimit, projectLimit } from "./limits";
 
@@ -31,7 +31,7 @@ export const designAgentTask = schemaTask({
             projectId,
             runId: ctx.run.id,
             kind: "design",
-            startText: "Ghost AI is reading the canvas…",
+            startText: "Plano is reading the canvas…",
             signal,
             queuedMs,
             generate: (graph, onProgress) => {

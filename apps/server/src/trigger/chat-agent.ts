@@ -2,7 +2,7 @@ import { logger, metadata, schemaTask } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { analyzeGraph, suggestPrompts } from "@repo/types";
 import { orm } from "../prisma/db";
-import { publishAssistantMessage, publishStatus, readChatHistory, setAiPresence, updateAssistantMessage } from "../utils/liveblocks";
+import { publishAssistantMessage, publishStatus, readChatHistory, setAiPresence, updateAssistantMessage } from "../utils/realtime";
 import { globalLimit, projectLimit } from "./limits";
 import {
     AllProvidersFailedError,
@@ -24,7 +24,7 @@ export const chatAgentPayloadSchema = z.object({
 
 export type ChatAgentPayload = z.infer<typeof chatAgentPayloadSchema>;
 
-// How often the growing reply is pushed to the room. Liveblocks takes REST calls, so this is a rate, not a stream.
+// How often the growing reply is pushed to the room. Each push is an HTTP call to the API plus a database write, so this is a rate, not a stream.
 const STREAM_FLUSH_MS = 300;
 
 /*
@@ -58,7 +58,7 @@ export const chatAgentTask = schemaTask({
             const [graph, history] = await Promise.all([
                 readFlow(projectId),
                 readChatHistory(projectId),
-                publishStatus(projectId, { kind: "chat", runId, step: "start", text: "Ghost AI is thinking…" }),
+                publishStatus(projectId, { kind: "chat", runId, step: "start", text: "Plano is thinking…" }),
                 setAiPresence(projectId, { cursor: null, thinking: true }),
             ]);
             const present = new Set(graph.nodes.map((node) => node.id));
@@ -67,7 +67,7 @@ export const chatAgentTask = schemaTask({
             metadata.set("step", "processing");
             // The reply message exists from the first moment, so the room sees it fill in.
             [, messageId] = await Promise.all([
-                publishStatus(projectId, { kind: "chat", runId, step: "processing", text: "Ghost AI is answering…" }),
+                publishStatus(projectId, { kind: "chat", runId, step: "processing", text: "Plano is answering…" }),
                 publishAssistantMessage(projectId, "", { runId, streaming: true }),
             ]);
 
