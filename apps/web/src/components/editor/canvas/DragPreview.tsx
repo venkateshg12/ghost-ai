@@ -12,7 +12,8 @@ interface DragPreviewProps {
 // exactly where and how big the node will be when dropped.
 const DragPreview = ({ shape, position, zoom }: DragPreviewProps) => {
   const width = shape.width * zoom;
-  const height = shape.height * zoom;
+  // A line is dropped as a run from its start to its end, so a flat one still needs room to show.
+  const height = (shape.edge ? Math.max(shape.height, 12) : shape.height) * zoom;
 
   return (
     <div
@@ -20,7 +21,22 @@ const DragPreview = ({ shape, position, zoom }: DragPreviewProps) => {
       style={{ left: position.x - width / 2, top: position.y - height / 2, width, height }}
       aria-hidden="true"
     >
-      <ShapeBody shape={shape.type as NodeShape} fill="var(--bg-surface)" stroke="var(--accent-primary)" strokeWidth={2} dashed />
+      {shape.edge ? (
+        <svg width={width} height={height} className="overflow-visible">
+          <line
+            x1={0}
+            y1={shape.height === 0 ? height / 2 : height}
+            x2={width}
+            y2={shape.height === 0 ? height / 2 : 0}
+            stroke="var(--accent-primary)"
+            strokeWidth={2}
+            strokeDasharray="4 4"
+            strokeLinecap="round"
+          />
+        </svg>
+      ) : (
+        <ShapeBody shape={shape.type as NodeShape} fill="var(--bg-surface)" stroke="var(--accent-primary)" strokeWidth={2} dashed />
+      )}
     </div>
   );
 };

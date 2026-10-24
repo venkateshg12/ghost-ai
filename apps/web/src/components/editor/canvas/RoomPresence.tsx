@@ -1,6 +1,6 @@
 "use client";
 
-import { useOthers } from "@liveblocks/react/suspense";
+import { useOthers } from "@/lib/realtime/react";
 import UserMenu from "@/components/editor/UserMenu";
 import { initialsOf } from "@/lib/utils";
 import { useAuthStore } from "@/store/auth.store";
@@ -14,7 +14,7 @@ const MAX_VISIBLE = 5;
  */
 const RoomPresence = () => {
   const userId = useAuthStore((state) => state.user?.id);
-  const others = useOthers((list) => list.filter((other) => other.id !== userId));
+  const others = useOthers((list) => list.filter((other) => other.userId !== userId));
 
   const visible = others.slice(0, MAX_VISIBLE);
   const overflow = others.length - visible.length;
