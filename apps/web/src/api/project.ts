@@ -1,7 +1,6 @@
 import API from "@/lib/api";
 import type { MessageResponse, SuccessResponse } from "@/types";
 import type {
-    CanvasSnapshot,
     CreateProjectSchema,
     ProjectMembers,
     ProjectSpecSummary,
@@ -54,15 +53,6 @@ export const removeCollaborator = async ({ projectId, email }: { projectId: stri
 
 /* ---------- Canvas ---------- */
 
-export const getCanvas = async (projectId: string): Promise<SuccessResponse<CanvasSnapshot>> => {
-    const response = await API.get<SuccessResponse<CanvasSnapshot>>(`/projects/${projectId}/canvas`);
-    return response.data;
-};
-
-export const saveCanvas = async ({ projectId, snapshot }: { projectId: string; snapshot: CanvasSnapshot }): Promise<SuccessResponse<{ savedAt: string }>> => {
-    const response = await API.put<SuccessResponse<{ savedAt: string }>>(`/projects/${projectId}/canvas`, snapshot);
-    return response.data;
-};
 
 /* ---------- Specs ---------- */
 
