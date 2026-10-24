@@ -1,7 +1,11 @@
 import { z } from "zod";
 
-// Project ids double as Liveblocks room ids, so every route that takes one validates it the same way.
+// Project ids double as realtime room ids, so every route that takes one validates it the same way.
 export const projectIdSchema = z.string().uuid({ message: "Invalid project id" });
+
+// Owned projects per account. Projects shared with a user don't count towards it.
+export const MAX_PROJECTS_PER_USER = 5;
+export const PROJECT_LIMIT_ERROR_CODE = "PROJECT_LIMIT_REACHED";
 
 const projectNameField = z.string().trim().min(1, { message: "Project name is required" }).max(120);
 
