@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import type { JsonObject } from "@liveblocks/client";
 import {
   useCreateFeedMessage,
   useFeedMessages,
-} from "@liveblocks/react/suspense";
+} from "@/lib/realtime/react";
 import {
   AI_CHAT_FEED,
   AI_STATUS_FEED,
@@ -46,7 +45,7 @@ const ACTIVE_STEPS = new Set<AiStatusPayload["step"]>([
 
 /*
   The room's two feeds. Every message is validated against the shared schema before it is rendered;
-  anything else in the feed is ignored. Chat is the conversation (everyone's messages plus Ghost AI's
+  anything else in the feed is ignored. Chat is the conversation (everyone's messages plus Plano's
   replies); status carries only the latest progress of whatever AI run is happening in the room.
  */
 export const useAiFeeds = () => {
@@ -117,7 +116,7 @@ export const useAiFeeds = () => {
   const sendChatMessage = (message: ChatMessagePayload) =>
     createFeedMessage(
       AI_CHAT_FEED,
-      JSON.parse(JSON.stringify(message)) as JsonObject,
+      JSON.parse(JSON.stringify(message)),
     );
 
   return {

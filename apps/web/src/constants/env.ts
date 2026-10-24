@@ -13,5 +13,8 @@ const requireEnv = (key: string, value: string | undefined) => {
 
 export const IS_DEV = process.env.NODE_ENV === "development";
 export const API_URL = requireEnv("NEXT_PUBLIC_API_URL", process.env.NEXT_PUBLIC_API_URL);
+// The realtime engine WebSocket endpoint (e.g. ws://localhost:5000/realtime or wss://api.../realtime)
+export const REALTIME_URL = process.env.NEXT_PUBLIC_REALTIME_URL || "ws://localhost:5000/realtime";
 // Optional: without it the Google button is left out in production and replaced by a setup notice in development.
 export const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
+
