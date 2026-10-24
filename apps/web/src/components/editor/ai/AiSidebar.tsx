@@ -31,7 +31,7 @@ const AiSidebar = ({ project }: { project: ProjectSummary }) => {
               AI Workspace
             </h3>
             <p className="mt-0.5 font-mono text-[11px] text-copy-muted">
-              Collaborate with Ghost AI
+              Collaborate with Plano
             </p>
           </div>
         </div>

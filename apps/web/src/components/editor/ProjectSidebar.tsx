@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGetProjects } from "@/hooks/project/useGetProjects";
+import { useProjectQuota } from "@/hooks/project/useProjectQuota";
+import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/auth.store";
 import { useEditorStore } from "@/store/editor.store";
 
 const EmptyState = ({ icon: Icon, title, text }: { icon: typeof Folder; title: string; text: string }) => (
@@ -33,7 +36,7 @@ const ProjectRow = ({ project, active }: { project: ProjectSummary; active: bool
         active && "border-surface-border-subtle bg-elevated"
       )}
     >
-      <Link href={`/editor/${project.id}`} className="flex flex-1 items-center gap-2 overflow-hidden">
+      <Link href={ROUTES.project(project.id)} className="flex flex-1 items-center gap-2 overflow-hidden">
         <Icon className={cn("h-4 w-4 shrink-0", active ? "text-brand" : "text-copy-secondary")} />
         <span className={cn("truncate font-mono text-sm", active ? "font-semibold text-brand" : "text-copy-primary")}>
           {project.name}
@@ -76,10 +79,15 @@ const ProjectSidebar = () => {
   const isOpen = useEditorStore((state) => state.sidebarOpen);
   const setSidebarOpen = useEditorStore((state) => state.setSidebarOpen);
   const openDialog = useEditorStore((state) => state.openDialog);
+  const user = useAuthStore((state) => state.user);
   const { data: projects = [], isLoading } = useGetProjects();
+  const { used, max, atLimit } = useProjectQuota();
 
   const owned = projects.filter((project) => project.role === "owner");
   const shared = projects.filter((project) => project.role === "collaborator");
+
+  // Projects belong to accounts; a signed-out visitor only has the canvas.
+  if (!user) return null;
 
   const renderList = (list: ProjectSummary[], empty: React.ReactNode) => {
     if (isLoading) {
@@ -158,7 +166,13 @@ const ProjectSidebar = () => {
         </div>
 
         <div className="shrink-0 border-t border-surface-border p-4">
-          <Button onClick={() => openDialog("create")} className="w-full gap-2 py-5">
+          <div className="mb-3 flex items-center justify-between font-mono text-xs">
+            <span className={cn("text-copy-muted", atLimit && "text-state-error")}>
+              {used} / {max} projects
+            </span>
+            {atLimit && <span className="text-copy-muted">Delete one to add more</span>}
+          </div>
+          <Button onClick={() => openDialog("create")} disabled={atLimit} className="w-full gap-2 py-5">
             <Plus className="h-4 w-4" />
             <span>New Project</span>
           </Button>
