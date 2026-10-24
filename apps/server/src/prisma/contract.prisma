@@ -91,10 +91,24 @@ model Project {
     owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
     collaborators ProjectCollaborator[]
     specs ProjectSpec[]
+    messages RoomMessage[]
 
     @@index([ownerId])
     @@index([createdAt])
 }
+
+model RoomMessage {
+    id        Uuid @id @default(uuid())
+    projectId Uuid
+    feed      String
+    data      Json
+    createdAt TimestamptzString @default(now())
+    updatedAt TimestamptzString @default(now())
+    project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+    @@index([projectId, feed, createdAt])
+}
+
 
 // Collaborators are invited by email, so an invite works before the person has an account; access
 // is granted to whichever verified user owns that address.
