@@ -4,5 +4,6 @@ export enum appErrorCode {
     TokenExpired = "TOKEN_EXPIRED",
     GmailNotConfigured = "GMAIL_NOT_CONFIGURED",
     GmailAuthInvalid = "GMAIL_AUTH_INVALID",
-    GmailSendFailed = "GMAIL_SEND_FAILED"
+    GmailSendFailed = "GMAIL_SEND_FAILED",
+    ProjectLimitReached = "PROJECT_LIMIT_REACHED"
 }
