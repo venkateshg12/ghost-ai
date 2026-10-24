@@ -4,6 +4,8 @@ import appAssert from "../utils/errors/appAssert";
 import { BAD_REQUEST, CONFLICT, NOT_FOUND } from "../constants/http";
 import { cache } from "../utils/cache";
 import { assertProjectAccess, assertProjectOwner } from "./project.service";
+import { roomManager } from "../realtime/roomManager";
+
 
 // The share dialog is opened far more often than the member list changes. Any invite, removal or
 // profile edit bumps `members`, so this TTL only bounds how long a missed bump could linger.
@@ -75,5 +77,11 @@ export const removeCollaboratorService = async (projectId: string, userId: strin
     appAssert(removed, NOT_FOUND, "Collaborator not found");
     await cache.bump("members");
 
+    const targetUser = await orm.User.where({ email }).select("id").first();
+    if (targetUser) {
+        await roomManager.kickUser(projectId, targetUser.id);
+    }
+
     return loadMembers(projectId, project.ownerId);
 };
+

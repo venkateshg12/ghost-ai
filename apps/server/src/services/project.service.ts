@@ -1,14 +1,15 @@
-import { slugify, type CreateProjectSchema, type ProjectRole, type ProjectSummary } from "@repo/types";
+import { MAX_PROJECTS_PER_USER, slugify, type CreateProjectSchema, type ProjectRole, type ProjectSummary } from "@repo/types";
 import { orm } from "../prisma/db";
 import type { Models } from "../prisma/contract";
 import appAssert from "../utils/errors/appAssert";
 import { FORBIDDEN, NOT_FOUND } from "../constants/http";
 import { appErrorCode } from "../constants/appErrorCode";
-import { liveblocks } from "../utils/liveblocks";
-import { removeObject } from "../utils/storage";
+import { referenceFor, removeObject, storagePaths } from "../utils/storage";
+import { roomManager } from "../realtime/roomManager";
 
 // A queried row has the columns only; the model type also lists its relations.
-type Project = Omit<Models.public_Project, "collaborators" | "owner" | "specs">;
+type Project = Omit<Models.public_Project, "collaborators" | "owner" | "specs" | "messages">;
+
 
 const DEFAULT_PROJECT_NAME = "Untitled Project";
 
@@ -109,12 +110,39 @@ export const getProjectService = async (projectId: string, userId: string) => {
     return toProjectSummary(project, role);
 };
 
+const projectLimitMessage = `You can have up to ${MAX_PROJECTS_PER_USER} projects. Delete one to create another.`;
+
+// Oldest first: when the limit is breached, the newest row is the one that loses.
+const listOwnedProjectIds = async (userId: string) => {
+    const rows = await orm.Project
+        .where({ ownerId: userId })
+        .orderBy((p) => p.createdAt.asc())
+        .select("id")
+        .all();
+    return rows.map((row) => row.id);
+};
+
+/*
+  Capped at MAX_PROJECTS_PER_USER owned projects. The pre-check gives the normal fast failure; the
+  re-check after the insert closes the race where two requests both pass the pre-check — whichever
+  row ended up past the limit is removed again.
+ */
 export const createProjectService = async (userId: string, data: CreateProjectSchema) => {
+    const before = await listOwnedProjectIds(userId);
+    appAssert(before.length < MAX_PROJECTS_PER_USER, FORBIDDEN, projectLimitMessage, appErrorCode.ProjectLimitReached);
+
     const project = await orm.Project.create({
         ownerId: userId,
         name: data.name || DEFAULT_PROJECT_NAME,
         description: data.description || null,
     });
+
+    const after = await listOwnedProjectIds(userId);
+    if (!after.slice(0, MAX_PROJECTS_PER_USER).includes(project.id)) {
+        await orm.Project.where({ id: project.id }).delete();
+        appAssert(false, FORBIDDEN, projectLimitMessage, appErrorCode.ProjectLimitReached);
+    }
+
     return toProjectSummary(project, "owner");
 };
 
@@ -142,11 +170,12 @@ export const deleteProjectService = async (projectId: string, userId: string) =>
 
     const references = [
         ...(project.canvasJsonPath ? [project.canvasJsonPath] : []),
+        referenceFor(storagePaths.roomDoc(projectId)),
         ...specs.map((spec) => spec.filePath),
     ];
     const cleanup = await Promise.allSettled([
         ...references.map((reference) => removeObject(reference)),
-        liveblocks.deleteRoom(projectId),
+        roomManager.destroyRoom(projectId),
     ]);
     for (const result of cleanup) {
         if (result.status === "rejected") {
@@ -154,4 +183,5 @@ export const deleteProjectService = async (projectId: string, userId: string) =>
         }
     }
 };
+
 
