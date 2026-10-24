@@ -1,20 +1,23 @@
 "use client";
 
-import { useOther } from "@liveblocks/react/suspense";
-import type { CursorsCursorProps } from "@liveblocks/react-flow";
+import { useOther } from "@/lib/realtime/react";
 import { Loader2 } from "lucide-react";
 
 const FALLBACK_COLOR = "#00c8d4";
 
+interface CollaboratorCursorProps {
+  connectionId: string;
+}
+
 /*
   One participant's cursor: a pointer and a name badge in their presence colour, with a spinner while
   they (or the AI participant) are generating. Positioning, smoothing and pan/zoom are handled by
-  Liveblocks' <Cursors>, which renders this for every other connection.
+  CursorsLayer.
  */
-const CollaboratorCursor = ({ connectionId }: CursorsCursorProps) => {
-  const name = useOther(connectionId, (other) => other.info?.name ?? "Collaborator");
-  const color = useOther(connectionId, (other) => other.info?.color ?? FALLBACK_COLOR);
-  const isThinking = useOther(connectionId, (other) => Boolean(other.presence.thinking || other.presence.isThinking));
+const CollaboratorCursor = ({ connectionId }: CollaboratorCursorProps) => {
+  const name = useOther(connectionId, (other) => other?.info?.name ?? "Collaborator");
+  const color = useOther(connectionId, (other) => other?.info?.color ?? FALLBACK_COLOR);
+  const isThinking = useOther(connectionId, (other) => Boolean(other?.presence.thinking));
 
   return (
     <div className="pointer-events-none relative select-none">

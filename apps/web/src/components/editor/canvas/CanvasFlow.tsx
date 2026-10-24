@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, type DragEvent } from "react";
+import { useCallback, useMemo, useRef, useState, type DragEvent, type ReactNode } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -14,23 +14,26 @@ import {
   type OnEdgesChange,
   type OnNodesChange,
 } from "@xyflow/react";
-import { Cursors } from "@liveblocks/react-flow";
-import { CUSTOM_EDGE_TYPE, CUSTOM_NODE_TYPE, DEFAULT_NODE_COLOR, type NodeShape } from "@repo/types";
+import {
+  CUSTOM_EDGE_TYPE,
+  CUSTOM_NODE_TYPE,
+  DEFAULT_NODE_COLOR,
+  FREE_POINT_SHAPE,
+  isFreePoint,
+  type NodeShape,
+} from "@repo/types";
 import type { CanvasFlowEdge, CanvasFlowNode, DraggedShape } from "@/types";
-import CanvasControlBar from "./CanvasControlBar";
+import { useTheme } from "@/lib/theme";
+import CanvasControlBar, { type CanvasHistory } from "./CanvasControlBar";
 import CanvasEdge from "./CanvasEdge";
 import CanvasNode from "./CanvasNode";
-import CollaboratorCursor from "./CollaboratorCursor";
 import DragPreview from "./DragPreview";
 import { SHAPE_DRAG_MIME } from "./ShapePanel";
 
 import "@xyflow/react/dist/style.css";
-import "@liveblocks/react-ui/styles.css";
-import "@liveblocks/react-flow/styles.css";
 
 const nodeTypes = { [CUSTOM_NODE_TYPE]: CanvasNode };
 const edgeTypes = { [CUSTOM_EDGE_TYPE]: CanvasEdge };
-const cursorComponents = { Cursor: CollaboratorCursor };
 
 interface CanvasFlowProps {
   nodes: CanvasFlowNode[];
@@ -41,13 +44,22 @@ interface CanvasFlowProps {
   onDelete: OnDelete<CanvasFlowNode, CanvasFlowEdge>;
   draggedShape: DraggedShape | null;
   onDragFinished: () => void;
+  /** Undo/redo for the control bar — the room's history, or the local draft's. */
+  history: CanvasHistory;
+  /** Pointer position in flow space, or null when it leaves. Only collaborative canvases pass these. */
+  onCursorMove?: (cursor: { x: number; y: number } | null) => void;
+  /** Layers drawn inside the flow (e.g. other people's cursors). */
+  children?: ReactNode;
 }
 
 /*
-  The collaborative canvas. Nodes and edges are controlled by `useLiveblocksFlow` in the parent, so
-  every change — drag, connect, delete (Backspace/Delete), resize, label — goes through Liveblocks
-  and reaches the whole room. The canvas fills its container edge to edge; panels float above it.
+  The canvas. Nodes and edges are controlled by the parent — `useFlow` (realtime room) for a saved
+  project, `useLocalFlow` (this browser only) for the signed-out draft — so this component knows nothing
+  about where they live. The canvas fills its container edge to edge; panels float above it.
  */
+// The end points of a free line are small enough to never be mistaken for a shape, big enough to grab.
+const POINT_SIZE = 16;
+
 const CanvasFlow = ({
   nodes,
   edges,
@@ -57,13 +69,48 @@ const CanvasFlow = ({
   onDelete,
   draggedShape,
   onDragFinished,
+  history,
+  onCursorMove,
+  children,
 }: CanvasFlowProps) => {
-  const { screenToFlowPosition, addNodes } = useReactFlow<CanvasFlowNode, CanvasFlowEdge>();
+  const { screenToFlowPosition, addNodes, addEdges, deleteElements } = useReactFlow<CanvasFlowNode, CanvasFlowEdge>();
   const { zoom } = useViewport();
+  const { resolved: theme } = useTheme();
   const counter = useRef(0);
+  const lastPointerMove = useRef(0);
   const [dragPoint, setDragPoint] = useState<{ x: number; y: number } | null>(null);
 
+  // Deleting a free line (or one end of it) must not leave its other end behind as a stray dot.
+  const handleDelete = useCallback(
+    (deleted: { nodes: CanvasFlowNode[]; edges: CanvasFlowEdge[] }) => {
+      onDelete(deleted);
+      const gone = new Set(deleted.nodes.map((node) => node.id));
+      const goneEdges = new Set(deleted.edges.map((edge) => edge.id));
+      const kept = edges.filter((edge) => !goneEdges.has(edge.id) && !gone.has(edge.source) && !gone.has(edge.target));
+      const stillUsed = new Set(kept.flatMap((edge) => [edge.source, edge.target]));
+      const stray = nodes.filter((node) => isFreePoint(node.data?.shape) && !gone.has(node.id) && !stillUsed.has(node.id));
+      if (stray.length > 0) void deleteElements({ nodes: stray.map((node) => ({ id: node.id })) });
+    },
+    [onDelete, nodes, edges, deleteElements]
+  );
+
   const defaultEdgeOptions = useMemo(() => ({ type: CUSTOM_EDGE_TYPE }), []);
+
+  const handlePointerMove = useCallback(
+    (event: React.PointerEvent) => {
+      if (!onCursorMove) return;
+      const now = Date.now();
+      if (now - lastPointerMove.current < 40) return;
+      lastPointerMove.current = now;
+      const flowPos = screenToFlowPosition({ x: event.clientX, y: event.clientY });
+      onCursorMove({ x: Math.round(flowPos.x), y: Math.round(flowPos.y) });
+    },
+    [screenToFlowPosition, onCursorMove]
+  );
+
+  const handlePointerLeave = useCallback(() => {
+    onCursorMove?.(null);
+  }, [onCursorMove]);
 
   const handleDragOver = useCallback((event: DragEvent) => {
     if (!event.dataTransfer.types.includes(SHAPE_DRAG_MIME)) return;
@@ -90,9 +137,37 @@ const CanvasFlow = ({
         const shape = JSON.parse(raw) as DraggedShape;
         const center = screenToFlowPosition({ x: event.clientX, y: event.clientY });
         counter.current += 1;
+        const stamp = `${Date.now()}-${counter.current}`;
+
+        if (shape.edge) {
+          // A free line is two small end points joined by an edge; dragging either end reshapes it.
+          const makePoint = (suffix: string, x: number, y: number): CanvasFlowNode => ({
+            id: `point-${stamp}-${suffix}`,
+            type: CUSTOM_NODE_TYPE,
+            position: { x: x - POINT_SIZE / 2, y: y - POINT_SIZE / 2 },
+            style: { width: POINT_SIZE, height: POINT_SIZE },
+            data: {
+              label: "",
+              color: DEFAULT_NODE_COLOR.bg,
+              textColor: DEFAULT_NODE_COLOR.text,
+              shape: FREE_POINT_SHAPE,
+            },
+          });
+          const start = makePoint("a", center.x - shape.width / 2, center.y + shape.height / 2);
+          const end = makePoint("b", center.x + shape.width / 2, center.y - shape.height / 2);
+          addNodes([start, end]);
+          addEdges({
+            id: `line-${stamp}`,
+            type: CUSTOM_EDGE_TYPE,
+            source: start.id,
+            target: end.id,
+            data: { label: "", free: true, ...shape.edge },
+          });
+          return;
+        }
 
         addNodes({
-          id: `${shape.type}-${Date.now()}-${counter.current}`,
+          id: `${shape.type}-${stamp}`,
           type: CUSTOM_NODE_TYPE,
           position: { x: center.x - shape.width / 2, y: center.y - shape.height / 2 },
           style: { width: shape.width, height: shape.height },
@@ -107,11 +182,18 @@ const CanvasFlow = ({
         console.error("Dropped shape payload could not be read:", error);
       }
     },
-    [screenToFlowPosition, addNodes, onDragFinished]
+    [screenToFlowPosition, addNodes, addEdges, onDragFinished]
   );
 
   return (
-    <div className="absolute inset-0 select-none bg-base" onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}>
+    <div
+      className="absolute inset-0 select-none bg-base"
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <ReactFlow<CanvasFlowNode, CanvasFlowEdge>
         nodes={nodes}
         edges={edges}
@@ -121,7 +203,7 @@ const CanvasFlow = ({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        onDelete={onDelete}
+        onDelete={handleDelete}
         deleteKeyCode={["Backspace", "Delete"]}
         connectionMode={ConnectionMode.Loose}
         fitView
@@ -129,13 +211,13 @@ const CanvasFlow = ({
         minZoom={0.2}
         maxZoom={2.5}
         proOptions={{ hideAttribution: true }}
-        colorMode="dark"
+        colorMode={theme}
         className="!bg-base text-copy-primary"
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.2} color="var(--canvas-dot)" />
         <MiniMap pannable zoomable position="bottom-right" className="!bottom-14 !right-4" />
-        <Cursors components={cursorComponents} />
-        <CanvasControlBar />
+        {children}
+        <CanvasControlBar history={history} />
       </ReactFlow>
 
       {draggedShape && dragPoint && <DragPreview shape={draggedShape} position={dragPoint} zoom={zoom} />}
