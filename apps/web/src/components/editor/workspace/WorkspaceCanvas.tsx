@@ -1,15 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useReactFlow } from "@xyflow/react";
-import { useLiveblocksFlow } from "@liveblocks/react-flow";
 import type { ProjectSummary } from "@repo/types";
-import { getCanvas } from "@/api/project";
-import { useCanvasAutosave } from "@/hooks/canvas/useCanvasAutosave";
+import {
+  useCanRedo,
+  useCanUndo,
+  useFlow,
+  useRedo,
+  useRoomClient,
+  useUndo,
+  useUpdateMyPresence,
+} from "@/lib/realtime/react";
+import { clearGuestDraft, loadGuestDraft } from "@/lib/guestDraft";
 import { useCanvasSaveStore } from "@/store/canvasSave.store";
 import { useEditorStore } from "@/store/editor.store";
 import type { CanvasFlowEdge, CanvasFlowNode, DraggedShape } from "@/types";
 import CanvasFlow from "../canvas/CanvasFlow";
+import CursorsLayer from "../canvas/CursorsLayer";
 import RoomPresence from "../canvas/RoomPresence";
 import ShapePanel from "../canvas/ShapePanel";
 import StarterTemplatesModal from "../canvas/StarterTemplatesModal";
@@ -18,73 +26,63 @@ import type { CanvasTemplate } from "../canvas/starter-templates";
 const FIT_VIEW_OPTIONS = { duration: 400, padding: 0.2, maxZoom: 1 };
 
 /*
-  Owns the room's flow state (one `useLiveblocksFlow` for the whole workspace) and the persistence
-  around it:
-  - initial load: only when the room is empty, seed it from the saved snapshot — a room that already
-    has nodes is live collaboration and is never overwritten;
-  - autosave: debounced snapshots once that decision is made;
-  - template import: replaces the canvas through the same collaborative state.
+  Owns the room's flow state (via `useFlow` connected to the in-house Yjs CRDT room)
+  - loading: authoritative on the server (seeded from .ydoc or snapshot automatically);
+  - autosave: authoritative on the server (debounced and compacted);
+  - template import: replaces the canvas collaboratively through Yjs transaction.
  */
 const WorkspaceCanvas = ({ project }: { project: ProjectSummary }) => {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } = useLiveblocksFlow<CanvasFlowNode, CanvasFlowEdge>({
-    suspense: true,
-    nodes: { initial: [] },
-    edges: { initial: [] },
-  });
-  const { setNodes, setEdges, fitView } = useReactFlow<CanvasFlowNode, CanvasFlowEdge>();
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete, replaceGraph } = useFlow();
+  const { fitView } = useReactFlow<CanvasFlowNode, CanvasFlowEdge>();
+  const client = useRoomClient();
   const dialog = useEditorStore((state) => state.dialog);
   const closeDialog = useEditorStore((state) => state.closeDialog);
   const registerSave = useCanvasSaveStore((state) => state.register);
+  const pendingImport = useEditorStore((state) => state.pendingImport);
+  const setPendingImport = useEditorStore((state) => state.setPendingImport);
+  const updateMyPresence = useUpdateMyPresence();
+  const history = {
+    undo: useUndo(),
+    redo: useRedo(),
+    canUndo: useCanUndo(),
+    canRedo: useCanRedo(),
+  };
 
   const [draggedShape, setDraggedShape] = useState<DraggedShape | null>(null);
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
-  const loadStarted = useRef(false);
 
   useEffect(() => {
-    if (loadStarted.current) return;
-    loadStarted.current = true;
-
-    if (nodes.length > 0 || edges.length > 0) {
-      setInitialLoadDone(true);
-      return;
-    }
-
-    let cancelled = false;
-    getCanvas(project.id)
-      .then(({ data: saved }) => {
-        if (cancelled || saved.nodes.length === 0) return;
-        setNodes(saved.nodes as CanvasFlowNode[]);
-        setEdges(saved.edges as CanvasFlowEdge[]);
-        requestAnimationFrame(() => void fitView(FIT_VIEW_OPTIONS));
-      })
-      .catch((error) => console.error("Saved canvas could not be loaded:", error))
-      .finally(() => {
-        if (!cancelled) setInitialLoadDone(true);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // Runs once per room: the decision is about the room's state at the moment it was opened.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const { saveNow } = useCanvasAutosave({ projectId: project.id, nodes, edges, enabled: initialLoadDone });
-
-  useEffect(() => {
-    registerSave(saveNow);
+    registerSave(async () => {
+      if (!client.saveNow()) throw new Error("Not connected");
+    });
     return () => registerSave(null);
-  }, [registerSave, saveNow]);
+  }, [client, registerSave]);
+
+  // "Save" on the signed-out/scratch canvas creates this project; its drawing arrives here. The room
+  // has synced by now (RoomGate), so an empty document means a brand-new project to fill.
+  useEffect(() => {
+    if (pendingImport?.projectId !== project.id) return;
+    const draft = loadGuestDraft();
+    const roomIsEmpty = client.getSnapshot().nodes.length === 0;
+    if (draft && roomIsEmpty) {
+      replaceGraph(draft.nodes, draft.edges);
+      clearGuestDraft();
+      requestAnimationFrame(() => void fitView(FIT_VIEW_OPTIONS));
+    }
+    setPendingImport(null);
+  }, [pendingImport, project.id, client, replaceGraph, fitView, setPendingImport]);
+
+  const handleCursorMove = useCallback(
+    (cursor: { x: number; y: number } | null) => updateMyPresence({ cursor }),
+    [updateMyPresence]
+  );
 
   const handleImportTemplate = useCallback(
     (template: CanvasTemplate) => {
-      // Edges first, so none ever points at a node that has just been removed.
-      setEdges([]);
-      setNodes(template.nodes);
-      setEdges(template.edges);
+      // One transaction: every collaborator sees the swap at once and Undo reverts all of it in one step.
+      replaceGraph(template.nodes, template.edges);
       requestAnimationFrame(() => void fitView(FIT_VIEW_OPTIONS));
     },
-    [setNodes, setEdges, fitView]
+    [replaceGraph, fitView]
   );
 
   return (
@@ -98,7 +96,11 @@ const WorkspaceCanvas = ({ project }: { project: ProjectSummary }) => {
         onDelete={onDelete}
         draggedShape={draggedShape}
         onDragFinished={() => setDraggedShape(null)}
-      />
+        history={history}
+        onCursorMove={handleCursorMove}
+      >
+        <CursorsLayer />
+      </CanvasFlow>
       <RoomPresence />
       <ShapePanel onDragStart={setDraggedShape} onDragEnd={() => setDraggedShape(null)} />
       <StarterTemplatesModal isOpen={dialog === "templates"} onClose={closeDialog} onImport={handleImportTemplate} />

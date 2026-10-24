@@ -8,7 +8,7 @@ import WorkspaceCanvas from "./WorkspaceCanvas";
 import WorkspaceRoom from "./WorkspaceRoom";
 
 /*
-  One project's room. The canvas and the AI sidebar both live inside the Liveblocks room (the
+  One project's room. The canvas and the AI sidebar both live inside the realtime room (the
   sidebar reads its feeds and presence), and the sidebar floats over the canvas rather than
   shrinking it.
  */
