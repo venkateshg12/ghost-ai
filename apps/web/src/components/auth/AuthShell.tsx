@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Cpu, FileText, Users } from "lucide-react";
+import ThemeToggle from "@/components/common/ThemeToggle";
 import BrandMark from "@/components/common/BrandMark";
 
 const FEATURES = [
@@ -25,7 +26,7 @@ const FEATURES = [
 const AuthShell = ({ children }: { children: ReactNode }) => (
   <div className="flex min-h-screen bg-base text-copy-primary">
     <div className="hidden flex-col justify-between border-r border-surface-border bg-surface p-16 lg:flex lg:w-1/2">
-      <Link href="/" aria-label="Ghost AI home" className="w-fit rounded-xl focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring">
+      <Link href="/" aria-label="Plano home" className="w-fit rounded-xl focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring">
         <BrandMark />
       </Link>
 
@@ -37,7 +38,7 @@ const AuthShell = ({ children }: { children: ReactNode }) => (
             speed of thought.
           </h1>
           <p className="text-[1rem] leading-relaxed text-copy-muted">
-            Describe your architecture in plain English. Ghost AI maps it to a shared canvas your whole
+            Describe your architecture in plain English. Plano maps it to a shared canvas your whole
             team can refine in real time.
           </p>
         </div>
@@ -60,7 +61,8 @@ const AuthShell = ({ children }: { children: ReactNode }) => (
       <p className="text-xs text-copy-faint">Collaborative system design workspace.</p>
     </div>
 
-    <div className="flex flex-1 items-center justify-center p-6">
+    <div className="relative flex flex-1 items-center justify-center p-6">
+      <ThemeToggle className="absolute right-4 top-4" />
       <div className="w-full max-w-sm">{children}</div>
     </div>
   </div>

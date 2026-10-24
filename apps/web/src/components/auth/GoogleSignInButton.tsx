@@ -6,6 +6,7 @@ import { useGoogleLogin } from "@/hooks/auth/useGoogleLogin";
 import { GOOGLE_CLIENT_ID, IS_DEV } from "@/constants/env";
 import type { GoogleCredentialResponse } from "@/lib/google/google";
 import { loadGoogleSdk } from "@/lib/google/loadGsi";
+import { useTheme, type ResolvedTheme } from "@/lib/theme";
 
 // Google caps the rendered button at 400px wide.
 const MAX_BUTTON_WIDTH = 400;
@@ -13,6 +14,7 @@ const MAX_BUTTON_WIDTH = 400;
 function initializeGoogleSignIn(
   buttonContainer: HTMLDivElement,
   onCredential: (response: GoogleCredentialResponse) => void,
+  theme: ResolvedTheme,
 ): boolean {
   const id = window.google?.accounts?.id;
   if (!id) return false;
@@ -27,7 +29,7 @@ function initializeGoogleSignIn(
   });
 
   id.renderButton(buttonContainer, {
-    theme: "filled_black",
+    theme: theme === "light" ? "outline" : "filled_black",
     size: "large",
     text: "continue_with",
     shape: "rectangular",
@@ -63,6 +65,7 @@ export const GoogleSignInButton = ({
   const buttonRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<Status>("loading");
   const { mutate: loginWithGoogle } = useGoogleLogin();
+  const { resolved: theme } = useTheme();
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) return;
@@ -81,7 +84,7 @@ export const GoogleSignInButton = ({
       .then(() => {
         if (cancelled || !buttonRef.current) return;
         setStatus(
-          initializeGoogleSignIn(buttonRef.current, handleCredentialResponse)
+          initializeGoogleSignIn(buttonRef.current, handleCredentialResponse, theme)
             ? "ready"
             : "failed",
         );
@@ -94,7 +97,7 @@ export const GoogleSignInButton = ({
     return () => {
       cancelled = true;
     };
-  }, [loginWithGoogle, onError]);
+  }, [loginWithGoogle, onError, theme]);
 
   if (!GOOGLE_CLIENT_ID) {
     if (!IS_DEV) return null;
