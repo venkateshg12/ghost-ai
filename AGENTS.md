@@ -1,4 +1,4 @@
-# Ghost AI — agent notes
+# Plano — agent notes
 
 Read these before implementing or making architectural decisions:
 
