@@ -4,10 +4,10 @@ import { attemptsFor, filterOpenCircuits, getProviderChain, recordCircuitBreaker
 import { AllProvidersFailedError, runWithFallback, type RunMeta } from "./runWithFallback";
 import type { TokenUsage } from "./design";
 import { describeGraph, toGraphInput, type FlowGraph } from "./graph";
-import type { HistoryMessage } from "../liveblocks";
+import type { HistoryMessage } from "../realtime";
 import { toModelMessages } from "./messages";
 
-const SYSTEM_PROMPT = `You are Ghost AI, a principal system architect pair-programming with a team on a shared architecture diagram.
+const SYSTEM_PROMPT = `You are Plano, a principal system architect pair-programming with a team on a shared architecture diagram.
 You answer questions about the diagram and about system design in general.
 
 How to answer:

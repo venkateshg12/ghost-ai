@@ -30,7 +30,7 @@ export const designPlanSchema = z.object({
 export type { DesignOperation };
 export type DesignPlan = z.infer<typeof designPlanSchema>;
 
-export const DESIGN_SYSTEM_PROMPT = `You are Ghost AI, a principal system architect working on a shared diagram canvas.
+export const DESIGN_SYSTEM_PROMPT = `You are Plano, a principal system architect working on a shared diagram canvas.
 Turn the user's request into edit operations on the current canvas.
 
 Shapes and what they mean:
@@ -40,6 +40,12 @@ Shapes and what they mean:
 - hexagon: external system, third party or boundary
 - diamond: decision, gateway or router
 - circle: event, queue topic or endpoint
+- parallelogram: input/output or data in transit
+- cloud: the internet, a CDN or a cloud provider boundary
+- document: a file, report or generated artifact
+- triangle: a warning, alert or scaling point
+- star: a key or critical component
+- text: a free label or note; no border
 
 Colours (use the label): ${NODE_COLORS.map((pair) => pair.label).join(", ")}.
 Use colour to group related parts (e.g. Blue for clients, Purple for services, Green for data stores).
@@ -136,7 +142,7 @@ export const computePlanCacheKey = (
     const focus = (focusNodeIds ?? []).slice().sort().join(",");
     const raw = `${prompt.trim()}:${graphSig}:${focus}:${AI_PROVIDER_ORDER}:${NVIDIA_MODEL}:${GEMINI_MODEL}`;
     const hash = crypto.createHash("sha256").update(raw).digest("hex");
-    return `ghost:ai:plan:${projectId}:${hash}`;
+    return `plano:ai:plan:${projectId}:${hash}`;
 };
 
 export const generateDesignPlan = async (prompt: string, graph: FlowGraph, options: DesignOptions = {}): Promise<DesignResult> => {
