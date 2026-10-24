@@ -16,7 +16,7 @@ import { orm } from "../prisma/db";
 import appAssert from "../utils/errors/appAssert";
 import { BAD_REQUEST, CONFLICT, FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND } from "../constants/http";
 import { appErrorCode } from "../constants/appErrorCode";
-import { findReview, markRecommendationApplied, markRunReverted, publishAssistantMessage, publishStatus } from "../utils/liveblocks";
+import { findReview, markRecommendationApplied, markRunReverted, publishAssistantMessage, publishStatus } from "../utils/realtime";
 import { applyPlan, getVisionChain, loadSnapshot, placeNewNodes, readFlow, recordRunResult, repairPlan, restoreGraph, saveSnapshot } from "../utils/ai";
 import { assertProjectAccess } from "./project.service";
 import type { chatAgentTask } from "../trigger/chat-agent";
