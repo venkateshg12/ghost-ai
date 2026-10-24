@@ -1,5 +1,5 @@
 import type { ModelMessage } from "ai";
-import type { HistoryMessage } from "../liveblocks";
+import type { HistoryMessage } from "../realtime";
 
 /*
   Providers disagree about turn order (some insist on user-first and strict alternation), and a team chat

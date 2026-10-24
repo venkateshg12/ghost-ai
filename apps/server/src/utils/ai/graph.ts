@@ -4,6 +4,8 @@ import {
     DEFAULT_NODE_COLOR,
     NODE_COLORS,
     NODE_SHAPES,
+    isFreePoint,
+    withoutFreeLines,
     type CanvasEdgeData,
     type CanvasNodeData,
     type GraphInput,
@@ -30,6 +32,12 @@ export const DEFAULT_NODE_SIZE: Record<NodeShape, { width: number; height: numbe
     pill: { width: 160, height: 60 },
     cylinder: { width: 110, height: 120 },
     hexagon: { width: 150, height: 100 },
+    triangle: { width: 120, height: 110 },
+    parallelogram: { width: 160, height: 70 },
+    cloud: { width: 150, height: 100 },
+    document: { width: 140, height: 90 },
+    star: { width: 120, height: 115 },
+    text: { width: 140, height: 40 },
 };
 
 export const MIN_NODE_SIZE = { width: 80, height: 40 };
@@ -84,7 +92,11 @@ export const sizeOf = (node: FlowNode) => ({
 });
 
 // A compact text form of the graph, for prompts: the model edits by id, so ids must be visible.
-export const describeGraph = (graph: FlowGraph) => {
+export const describeGraph = (full: FlowGraph) => {
+    // Free-standing lines are annotations the model neither needs nor should edit.
+    const graph: FlowGraph = { nodes: full.nodes.filter((node) => !isFreePoint(node.data?.shape)), edges: full.edges };
+    const shown = new Set(graph.nodes.map((node) => node.id));
+    graph.edges = full.edges.filter((edge) => shown.has(edge.source) && shown.has(edge.target));
     if (graph.nodes.length === 0) return "The canvas is empty.";
     const labels = new Map(graph.nodes.map((node) => [node.id, node.data?.label || node.id]));
     const nodes = graph.nodes
@@ -100,14 +112,15 @@ export const describeGraph = (graph: FlowGraph) => {
 };
 
 // The framework-free form of a graph, for the shared analysis, layout and export utilities.
-export const toGraphInput = (graph: FlowGraph): GraphInput => ({
-    nodes: graph.nodes.map((node) => ({
-        id: node.id,
-        label: node.data?.label ?? "",
-        shape: node.data?.shape,
-        color: node.data?.color,
-        textColor: node.data?.textColor,
-        ...sizeOf(node),
-    })),
-    edges: graph.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, label: edge.data?.label })),
-});
+export const toGraphInput = (graph: FlowGraph): GraphInput =>
+    withoutFreeLines({
+        nodes: graph.nodes.map((node) => ({
+            id: node.id,
+            label: node.data?.label ?? "",
+            shape: node.data?.shape,
+            color: node.data?.color,
+            textColor: node.data?.textColor,
+            ...sizeOf(node),
+        })),
+        edges: graph.edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, label: edge.data?.label })),
+    });
