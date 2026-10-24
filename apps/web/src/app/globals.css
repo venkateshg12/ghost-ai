@@ -12,7 +12,10 @@
     text-state-error / -success / -warning                 states
 
   The standard shadcn names (background, card, primary, muted, …) are mapped onto the same tokens, so
-  generated components in components/ui pick up the dark theme without being edited.
+  generated components in components/ui pick up the active theme without being edited.
+
+  Two themes share these names. `:root` holds the dark values; `:root[data-theme="light"]` overrides them.
+  `data-theme` is set before first paint by the script in app/layout.tsx (see lib/theme.ts), so nothing flashes.
  */
 
 @theme inline {
@@ -52,7 +55,7 @@
   --color-popover: var(--bg-elevated);
   --color-popover-foreground: var(--text-primary);
   --color-primary: var(--accent-primary);
-  --color-primary-foreground: var(--bg-base);
+  --color-primary-foreground: var(--on-brand);
   --color-secondary: var(--bg-subtle);
   --color-secondary-foreground: var(--text-primary);
   --color-muted: var(--bg-subtle);
@@ -60,7 +63,7 @@
   --color-accent: var(--bg-subtle);
   --color-accent-foreground: var(--text-primary);
   --color-destructive: var(--state-error);
-  --color-destructive-foreground: var(--text-primary);
+  --color-destructive-foreground: var(--on-destructive);
   --color-border: var(--border-default);
   --color-input: var(--border-default);
   --color-ring: var(--accent-primary);
@@ -95,12 +98,56 @@
   --state-success: #34d399;
   --state-warning: #fbbf24;
 
+  /* Text that sits on a filled accent (primary button, destructive button). */
+  --on-brand: #080809;
+  --on-destructive: #f0f0f4;
+
+  /* Dialog backdrop. */
+  --scrim: rgba(0, 0, 0, 0.8);
+
   /* Canvas-only values (React Flow draws in SVG, which reads these directly). */
   --canvas-dot: #27272a;
   --canvas-edge: #cbd5e1;
   --canvas-edge-hover: #f8fafc;
+  --minimap-mask: rgba(8, 8, 9, 0.75);
 
   color-scheme: dark;
+}
+
+/*
+  Light theme. A white page, off-white panels and deeper accent shades: the cyan that glows on near-black
+  is too pale for text on white, so the brand accent drops to a darker teal (5.4:1 on white).
+ */
+:root[data-theme="light"] {
+  --bg-base: #ffffff;
+  --bg-surface: #f6f7f9;
+  --bg-elevated: #ffffff;
+  --bg-subtle: #eceef2;
+  --border-default: #e1e4ea;
+  --border-subtle: #cdd2db;
+  --text-primary: #14161a;
+  --text-secondary: #3a404c;
+  --text-muted: #5f6675;
+  --text-faint: #8d94a3;
+  --accent-primary: #0e7490;
+  --accent-primary-dim: rgba(14, 116, 144, 0.1);
+  --accent-ai: #6457f9;
+  --accent-ai-text: #5446e0;
+  --state-error: #d92d2f;
+  --state-success: #047857;
+  --state-warning: #b45309;
+
+  --on-brand: #ffffff;
+  --on-destructive: #ffffff;
+
+  --scrim: rgba(15, 18, 25, 0.45);
+
+  --canvas-dot: #cfd4dc;
+  --canvas-edge: #64748b;
+  --canvas-edge-hover: #0f172a;
+  --minimap-mask: rgba(246, 247, 249, 0.7);
+
+  color-scheme: light;
 }
 
 @keyframes slide-in-right {
@@ -240,7 +287,7 @@
     font-family: var(--font-sans);
   }
 
-  /* Thin dark scrollbars everywhere, instead of the OS's light, wide ones. */
+  /* Thin themed scrollbars everywhere, instead of the OS's wide ones. */
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--border-subtle) transparent;
@@ -330,7 +377,15 @@ html {
   }
 }
 
-/* React Flow chrome on the dark canvas. */
+/* React Flow chrome, themed. Its own variables point at our tokens so the pane and minimap follow the theme. */
+.react-flow {
+  --xy-background-color: var(--bg-base);
+  --xy-minimap-background-color: var(--bg-surface);
+  --xy-minimap-mask-background-color: var(--minimap-mask);
+  --xy-minimap-node-background-color: color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  --xy-minimap-node-stroke-color: var(--accent-primary);
+}
+
 .react-flow__attribution {
   display: none;
 }
@@ -343,11 +398,13 @@ html {
 }
 
 .react-flow__minimap-mask {
-  fill: rgba(8, 8, 9, 0.75);
+  fill: var(--minimap-mask);
 }
 
 .react-flow__minimap-node {
-  fill: rgba(0, 200, 212, 0.25);
+  fill: color-mix(in srgb, var(--accent-primary) 30%, transparent);
+  stroke: var(--accent-primary);
+  stroke-opacity: 0.5;
 }
 
 .react-flow__node.selected,
