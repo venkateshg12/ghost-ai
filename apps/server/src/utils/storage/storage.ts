@@ -74,11 +74,19 @@ export const removeObject = async (reference: string): Promise<void> => {
     await del(reference, { token: BLOB_READ_WRITE_TOKEN });
 };
 
+/*
+  The reference to hand to readBytes/removeObject for an object this server wrote at a known pathname.
+  Vercel Blob resolves a bare pathname; the local-disk fallback needs the `local:` prefix that putBytes returns.
+ */
+export const referenceFor = (pathname: string): string => (useBlob ? pathname : `${LOCAL_PREFIX}${pathname}`);
+
 export const storagePaths = {
     canvas: (projectId: string) => `canvas/${projectId}.json`,
+    roomDoc: (projectId: string) => `rooms/${projectId}.ydoc`,
     spec: (projectId: string, specId: string) => `specs/${projectId}/${specId}.md`,
     projectFolder: (projectId: string) => `specs/${projectId}`,
     canvasHistory: (projectId: string, runId: string) => `canvas-history/${projectId}/${runId}.json`,
     // Uploaded sketches. Deleted once the run that used them finishes.
     upload: (projectId: string, id: string, extension: string) => `uploads/${projectId}/${id}.${extension}`,
 };
+
