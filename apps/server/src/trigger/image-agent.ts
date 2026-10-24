@@ -2,7 +2,7 @@ import { logger, schemaTask } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { IMAGE_TYPES } from "@repo/types";
 import { generateImagePlan, recordRunResult } from "../utils/ai";
-import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/liveblocks";
+import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/realtime";
 import { readBytes, removeObject } from "../utils/storage";
 import { executeDesignFlow } from "./designFlow";
 import { globalLimit, projectLimit } from "./limits";
@@ -33,7 +33,7 @@ export const imageAgentTask = schemaTask({
             projectId,
             runId: ctx.run.id,
             kind: "image",
-            startText: "Ghost AI is looking at your sketch…",
+            startText: "Plano is looking at your sketch…",
             signal,
             queuedMs,
             generate: async (graph) => {

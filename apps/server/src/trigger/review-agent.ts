@@ -1,7 +1,7 @@
 import { logger, metadata, schemaTask } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { orm } from "../prisma/db";
-import { publishAssistantMessage, publishReview, publishStatus, setAiPresence } from "../utils/liveblocks";
+import { publishAssistantMessage, publishReview, publishStatus, setAiPresence } from "../utils/realtime";
 import { AllProvidersFailedError, RunCancelledError, describeProviderFailure, generateReview, readFlow, recordRunResult, toAiMeta } from "../utils/ai";
 import { globalLimit, projectLimit } from "./limits";
 
@@ -34,7 +34,7 @@ export const reviewAgentTask = schemaTask({
         }
 
         metadata.set("step", "start");
-        await publishStatus(projectId, { kind: "review", runId, step: "start", text: "Ghost AI is reviewing the architecture…" });
+        await publishStatus(projectId, { kind: "review", runId, step: "start", text: "Plano is reviewing the architecture…" });
         await setAiPresence(projectId, { cursor: null, thinking: true });
 
         try {

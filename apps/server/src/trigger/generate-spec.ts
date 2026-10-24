@@ -2,7 +2,7 @@ import { logger, metadata, schemaTask } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { chatHistoryItemSchema } from "@repo/types";
 import { orm } from "../prisma/db";
-import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/liveblocks";
+import { publishAssistantMessage, publishStatus, setAiPresence } from "../utils/realtime";
 import { AllProvidersFailedError, RunCancelledError, describeProviderFailure, generateSpecMarkdown, readFlow, recordRunResult, toAiMeta } from "../utils/ai";
 import { createSpecRecord } from "../services/spec.service";
 import { globalLimit, projectLimit } from "./limits";
