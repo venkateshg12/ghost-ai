@@ -1,7 +1,7 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-// Dark-theme styling for each Markdown element, so specs read like documents, not raw text.
+// Themed styling for each Markdown element, so specs read like documents, not raw text.
 const components: Components = {
   h1: ({ children }) => (
     <h1 className="mb-4 mt-2 text-xl font-bold tracking-tight text-copy-primary">

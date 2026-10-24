@@ -3,12 +3,6 @@
 import { useCallback } from "react";
 import { useReactFlow } from "@xyflow/react";
 import {
-  useCanRedo,
-  useCanUndo,
-  useRedo,
-  useUndo,
-} from "@liveblocks/react/suspense";
-import {
   Braces,
   Check,
   Copy,
@@ -36,6 +30,13 @@ import { useKeyboardShortcuts } from "@/hooks/editor/useKeyboardShortcuts";
 import { cn } from "@/lib/utils";
 
 const ZOOM_DURATION_MS = 300;
+
+export interface CanvasHistory {
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+}
 
 const ControlButton = ({
   title,
@@ -65,14 +66,11 @@ const ControlButton = ({
   </button>
 );
 
-// Bottom-left pill: zoom (via React Flow) and undo/redo (via Liveblocks history), plus the same
+// Bottom-left pill: zoom (via React Flow) and undo/redo (this user's own history), plus the same
 // actions on the keyboard.
-const CanvasControlBar = () => {
+const CanvasControlBar = ({ history }: { history: CanvasHistory }) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const undo = useUndo();
-  const redo = useRedo();
-  const canUndo = useCanUndo();
-  const canRedo = useCanRedo();
+  const { undo, redo, canUndo, canRedo } = history;
 
   const handleZoomIn = useCallback(
     () => void zoomIn({ duration: ZOOM_DURATION_MS }),

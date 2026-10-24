@@ -1,13 +1,35 @@
 "use client";
 
 import { memo, useState, type KeyboardEvent } from "react";
-import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, useReactFlow, type EdgeProps } from "@xyflow/react";
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  Position,
+  getBezierPath,
+  getSmoothStepPath,
+  getStraightPath,
+  useReactFlow,
+  type EdgeProps,
+} from "@xyflow/react";
+import type { CanvasEdgeStyle } from "@repo/types";
 import type { CanvasFlowEdge, CanvasFlowNode } from "@/types";
+import EdgeStyleToolbar from "./EdgeStyleToolbar";
+import { EdgeMarkerDef } from "./edgeMarkers";
+import { dashArrayOf, resolveEdgeStyle } from "./edgeStyle";
+
+type PathParams = Parameters<typeof getSmoothStepPath>[0];
+
+const pathFor = (pathType: CanvasEdgeStyle["pathType"], params: PathParams) => {
+  if (pathType === "straight") return getStraightPath(params);
+  if (pathType === "curved") return getBezierPath(params);
+  return getSmoothStepPath({ ...params, borderRadius: 8 });
+};
 
 /*
-  Right-angle edge with its own arrowhead, so edges look the same whether a person drew them, a
-  template brought them, or the AI wrote them server-side. Dim at rest, bright on hover/selection,
-  and easy to hit thanks to BaseEdge's wide invisible interaction path.
+  A line or arrow with its own arrowheads, so edges look the same whether a person drew them, a template
+  brought them, or the AI wrote them server-side. How it runs, how it is drawn and what sits at each end
+  come from the edge's data (see edgeStyle.tsx); an edge with no style is the original right-angle arrow.
+  Dim at rest, bright on hover/selection, and easy to hit thanks to BaseEdge's wide invisible interaction path.
  */
 const CanvasEdge = ({
   id,
@@ -26,15 +48,33 @@ const CanvasEdge = ({
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(label);
 
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const style = resolveEdgeStyle(data);
+
+  // A free-standing line has no handle sides to leave from, so elbows and curves leave along its main direction.
+  let fromSide = sourcePosition;
+  let toSide = targetPosition;
+  if (data?.free) {
+    const dx = targetX - sourceX;
+    const dy = targetY - sourceY;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      fromSide = dx >= 0 ? Position.Right : Position.Left;
+      toSide = dx >= 0 ? Position.Left : Position.Right;
+    } else {
+      fromSide = dy >= 0 ? Position.Bottom : Position.Top;
+      toSide = dy >= 0 ? Position.Top : Position.Bottom;
+    }
+  }
+
+  const [edgePath, labelX, labelY] = pathFor(style.pathType, {
     sourceX,
     sourceY,
-    sourcePosition,
+    sourcePosition: fromSide,
     targetX,
     targetY,
-    targetPosition,
-    borderRadius: 8,
+    targetPosition: toSide,
   });
+
+  const changeStyle = (patch: Partial<CanvasEdgeStyle>) => updateEdgeData(id, patch);
 
   const startEditing = () => {
     setDraft(label);
@@ -55,28 +95,31 @@ const CanvasEdge = ({
 
   const active = selected || isHovered;
   const stroke = selected ? "var(--accent-primary)" : isHovered ? "var(--canvas-edge-hover)" : "var(--canvas-edge)";
-  const markerId = `ghost-arrow-${id}`;
+  const startId = `plano-start-${id}`;
+  const endId = `plano-end-${id}`;
+  const width = style.strokeWidth + (selected ? 0.5 : 0);
 
   return (
     <>
       <defs>
-        <marker id={markerId} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-          <path d="M 0 0 L 10 5 L 0 10 z" fill={stroke} />
-        </marker>
+        <EdgeMarkerDef id={startId} kind={style.startMarker} color={stroke} />
+        <EdgeMarkerDef id={endId} kind={style.endMarker} color={stroke} />
       </defs>
       <g onMouseEnter={() => setIsHovered(true)} onMouseLeave={() => setIsHovered(false)} onDoubleClick={startEditing}>
         <BaseEdge
           id={id}
           path={edgePath}
-          markerEnd={`url(#${markerId})`}
+          markerStart={style.startMarker === "none" ? undefined : `url(#${startId})`}
+          markerEnd={style.endMarker === "none" ? undefined : `url(#${endId})`}
           interactionWidth={20}
           style={{
             stroke,
-            strokeWidth: selected ? 2 : 1.5,
+            strokeWidth: width,
+            strokeDasharray: dashArrayOf(style.lineStyle, width),
             strokeLinecap: "round",
             strokeLinejoin: "round",
             opacity: active ? 1 : 0.7,
-            filter: active ? "drop-shadow(0 0 4px rgba(0, 200, 212, 0.35))" : undefined,
+            filter: active ? "drop-shadow(0 0 4px color-mix(in srgb, var(--accent-primary) 35%, transparent))" : undefined,
             transition: "stroke 150ms, opacity 150ms",
           }}
         />
@@ -119,6 +162,15 @@ const CanvasEdge = ({
             </button>
           ) : null}
         </div>
+        {selected && !isEditing && (
+          <div
+            className="absolute"
+            // Above the nodes layer, or a free line's end dots would sit on top of the toolbar and swallow its clicks.
+            style={{ transform: `translate(-50%, -100%) translate(${labelX}px, ${Math.min(sourceY, targetY, labelY) - 20}px)`, pointerEvents: "all", zIndex: 2000 }}
+          >
+            <EdgeStyleToolbar style={style} onChange={changeStyle} />
+          </div>
+        )}
       </EdgeLabelRenderer>
     </>
   );
