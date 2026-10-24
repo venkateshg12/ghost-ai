@@ -1,5 +1,6 @@
 import { logout } from "@/api/auth";
 import queryClient, { clearUserQueries } from "@/lib/queryClient";
+import { ROUTES } from "@/constants/routes";
 import { useAuthStore } from "@/store/auth.store";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -16,7 +17,8 @@ export const useLogout = () => {
             clearAuth();
             // After clearAuth, so the user-scoped queries are already gated off and cannot refetch.
             clearUserQueries();
-            router.replace("/sign-in");
+            // Back to the open canvas, not a sign-in wall: signing out just returns you to a guest.
+            router.replace(ROUTES.home);
         },
     });
 };

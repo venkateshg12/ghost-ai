@@ -1,6 +1,7 @@
 import { verifyEmail } from "@/api/auth";
 import type { ApiError, LoginResponse, SuccessResponse } from "@/types";
 import { useMutation } from "@tanstack/react-query";
+import { ROUTES } from "@/constants/routes";
 import { useSignedIn } from "./useSignedIn";
 
 // A verify link signs the user in, so a short pause shows the success state before the redirect.
@@ -12,7 +13,7 @@ export const useVerifyEmail = () => {
     return useMutation<SuccessResponse<LoginResponse>, ApiError, string>({
         mutationFn: verifyEmail,
         onSuccess: (response) => {
-            setTimeout(() => onSignedIn(response, "/editor"), REDIRECT_DELAY_MS);
+            setTimeout(() => onSignedIn(response, ROUTES.home), REDIRECT_DELAY_MS);
         },
     });
 };
