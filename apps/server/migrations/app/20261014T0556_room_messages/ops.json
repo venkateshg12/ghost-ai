@@ -1,0 +1,161 @@
+[
+  {
+    "id": "table.roomMessage",
+    "label": "Create table \"roomMessage\"",
+    "summary": "Creates table \"roomMessage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "roomMessage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"roomMessage\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"roomMessage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"roomMessage\"",
+        "sql": "CREATE TABLE \"public\".\"roomMessage\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"data\" json NOT NULL,\n  \"feed\" text NOT NULL,\n  \"id\" uuid NOT NULL,\n  \"projectId\" uuid NOT NULL,\n  \"updatedAt\" timestamptz DEFAULT (now()) NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"roomMessage\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"roomMessage\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.roomMessage.roomMessage_projectId_feed_createdAt_idx_13cad9cb",
+    "label": "Create index \"roomMessage_projectId_feed_createdAt_idx_13cad9cb\" on \"roomMessage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "roomMessage_projectId_feed_createdAt_idx_13cad9cb",
+        "table": "roomMessage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"roomMessage_projectId_feed_createdAt_idx_13cad9cb\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"roomMessage_projectId_feed_createdAt_idx_13cad9cb\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"roomMessage_projectId_feed_createdAt_idx_13cad9cb\"",
+        "sql": "CREATE INDEX \"roomMessage_projectId_feed_createdAt_idx_13cad9cb\" ON \"public\".\"roomMessage\" (\"projectId\", \"feed\", \"createdAt\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"roomMessage_projectId_feed_createdAt_idx_13cad9cb\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"roomMessage_projectId_feed_createdAt_idx_13cad9cb\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.roomMessage.roomMessage_projectId_idx_a96e4d92",
+    "label": "Create index \"roomMessage_projectId_idx_a96e4d92\" on \"roomMessage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "roomMessage_projectId_idx_a96e4d92",
+        "table": "roomMessage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"roomMessage_projectId_idx_a96e4d92\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"roomMessage_projectId_idx_a96e4d92\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"roomMessage_projectId_idx_a96e4d92\"",
+        "sql": "CREATE INDEX \"roomMessage_projectId_idx_a96e4d92\" ON \"public\".\"roomMessage\" (\"projectId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"roomMessage_projectId_idx_a96e4d92\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"roomMessage_projectId_idx_a96e4d92\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.roomMessage.roomMessage_projectId_fkey",
+    "label": "Add foreign key \"roomMessage_projectId_fkey\" on \"roomMessage\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "roomMessage_projectId_fkey",
+        "table": "roomMessage"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"roomMessage_projectId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "roomMessage_projectId_fkey",
+          "public",
+          "\"public\".\"roomMessage\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"roomMessage_projectId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"roomMessage\"\nADD CONSTRAINT \"roomMessage_projectId_fkey\"\nFOREIGN KEY (\"projectId\")\nREFERENCES \"public\".\"project\" (\"id\")\nON DELETE CASCADE"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"roomMessage_projectId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "roomMessage_projectId_fkey",
+          "public",
+          "\"public\".\"roomMessage\""
+        ]
+      }
+    ]
+  }
+]
