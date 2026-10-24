@@ -4,7 +4,7 @@ import {
   type Edge,
   type Node,
 } from "@xyflow/react";
-import { toMermaid, type GraphInput } from "@repo/types";
+import { toMermaid, withoutFreeLines, type GraphInput } from "@repo/types";
 
 /*
   Getting a diagram out of the editor: Mermaid text for READMEs and wikis, a PNG for slides, and the raw
@@ -16,7 +16,12 @@ type FlowNodeLike = Node<{
   color?: string;
   textColor?: string;
 }>;
-type FlowEdgeLike = Edge<{ label?: string }>;
+type FlowEdgeLike = Edge<{
+  label?: string;
+  lineStyle?: string;
+  startMarker?: string;
+  endMarker?: string;
+}>;
 
 const sizeOf = (node: FlowNodeLike) => ({
   width: node.measured?.width ?? (Number(node.style?.width) || 140),
@@ -26,22 +31,26 @@ const sizeOf = (node: FlowNodeLike) => ({
 export const toGraphInput = (
   nodes: FlowNodeLike[],
   edges: FlowEdgeLike[],
-): GraphInput => ({
-  nodes: nodes.map((node) => ({
-    id: node.id,
-    label: node.data?.label ?? "",
-    shape: node.data?.shape,
-    color: node.data?.color,
-    textColor: node.data?.textColor,
-    ...sizeOf(node),
-  })),
-  edges: edges.map((edge) => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    label: edge.data?.label,
-  })),
-});
+): GraphInput =>
+  withoutFreeLines({
+    nodes: nodes.map((node) => ({
+      id: node.id,
+      label: node.data?.label ?? "",
+      shape: node.data?.shape,
+      color: node.data?.color,
+      textColor: node.data?.textColor,
+      ...sizeOf(node),
+    })),
+    edges: edges.map((edge) => ({
+      id: edge.id,
+      source: edge.source,
+      target: edge.target,
+      label: edge.data?.label,
+      lineStyle: edge.data?.lineStyle,
+      startMarker: edge.data?.startMarker,
+      endMarker: edge.data?.endMarker,
+    })),
+  });
 
 export const mermaidOf = (nodes: FlowNodeLike[], edges: FlowEdgeLike[]) =>
   toMermaid(toGraphInput(nodes, edges));
@@ -108,6 +117,9 @@ export const downloadPng = async (nodes: FlowNodeLike[], fileName: string) => {
 
   const dataUrl = await toPng(element, {
     backgroundColor: getComputedStyle(document.body).backgroundColor,
+    // The grab dots at the ends of free lines are for editing, not part of the picture.
+    filter: (node) =>
+      !(node instanceof HTMLElement && node.dataset.exportHide !== undefined),
     width,
     height,
     pixelRatio: 2,

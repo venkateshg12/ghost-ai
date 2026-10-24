@@ -3,6 +3,7 @@ import queryClient from "@/lib/queryClient";
 import type { ApiError, MessageResponse, SuccessResponse } from "@/types";
 import type { ProjectSummary } from "@repo/types";
 import { useMutation } from "@tanstack/react-query";
+import { ROUTES } from "@/constants/routes";
 import { useParams, useRouter } from "next/navigation";
 
 export const useDeleteProject = () => {
@@ -18,7 +19,7 @@ export const useDeleteProject = () => {
             queryClient.removeQueries({ queryKey: ["project", projectId] });
             // Deleting the workspace you're standing in sends you home; anywhere else, stay put.
             if (params.roomId === projectId) {
-                router.replace("/editor");
+                router.replace(ROUTES.home);
             }
         },
     });
